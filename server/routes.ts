@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer } from "ws";
 import { storage } from "./storage";
+import { otpService } from "./otp-service";
 import { 
   insertUserSchema, 
   insertSpaceSchema, 
@@ -54,11 +55,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { contact } = req.body;
       
-      // In production, this would integrate with Supabase Auth
-      // For now, simulate OTP sending
-      console.log(`Sending OTP to ${contact}`);
+      if (!contact) {
+        return res.status(400).json({ message: "Contact is required" });
+      }
+
+      const result = await otpService.sendOTP(contact);
       
-      res.json({ success: true, message: "OTP sent successfully" });
+      if (result.success) {
+        res.json({ success: true, message: result.message });
+      } else {
+        res.status(400).json({ message: result.message });
+      }
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -68,10 +75,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { contact, otp } = req.body;
       
-      // In production, verify OTP with Supabase Auth
-      // For demo, accept any 6-digit code
-      if (!/^\d{6}$/.test(otp)) {
-        return res.status(400).json({ message: "Invalid OTP format" });
+      if (!contact || !otp) {
+        return res.status(400).json({ message: "Contact and OTP are required" });
+      }
+
+      // Verify OTP using the OTP service
+      const verification = otpService.verifyOTP(contact, otp);
+      
+      if (!verification.success) {
+        return res.status(400).json({ message: verification.message });
       }
 
       // Check if user exists
@@ -82,7 +94,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ success: true, isNewUser: true, contact });
       }
 
-      // Set session (in production, use proper session management)
+      // Set session
       req.session.userId = user.id;
       
       res.json({ success: true, user, isNewUser: false });

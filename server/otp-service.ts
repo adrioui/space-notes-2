@@ -25,7 +25,7 @@ try {
 let emailTransporter: nodemailer.Transporter | undefined;
 try {
   if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    emailTransporter = nodemailer.createTransporter({
+    emailTransporter = nodemailer.createTransport({
       service: 'gmail', // You can change this to other email services
       auth: {
         user: process.env.EMAIL_USER,
@@ -180,11 +180,11 @@ export class OTPService {
   startCleanupTimer() {
     setInterval(() => {
       const now = new Date();
-      for (const [contact, otpData] of otpStorage.entries()) {
+      Array.from(otpStorage.entries()).forEach(([contact, otpData]) => {
         if (now > otpData.expiresAt) {
           otpStorage.delete(contact);
         }
-      }
+      });
     }, 60000); // Clean up every minute
   }
 }
