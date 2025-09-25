@@ -5,6 +5,8 @@ import {
   type InsertSpace,
   type Message,
   type InsertMessage,
+  type MessageReaction,
+  type InsertMessageReaction,
   type Note,
   type InsertNote,
   type Lesson,
@@ -35,11 +37,18 @@ export interface IStorage {
   getSpaceMembers(spaceId: string): Promise<(SpaceMember & { user: User })[]>;
   addSpaceMember(spaceId: string, userId: string, role?: string): Promise<SpaceMember>;
   isSpaceMember(spaceId: string, userId: string): Promise<boolean>;
+  getMemberRole(spaceId: string, userId: string): Promise<string | undefined>;
+  updateMemberRole(spaceId: string, userId: string, role: string): Promise<void>;
   updateMemberNotificationLevel(spaceId: string, userId: string, level: string): Promise<void>;
 
   // Messages
   getMessages(spaceId: string, limit?: number, before?: string): Promise<(Message & { user: User })[]>;
   createMessage(message: InsertMessage): Promise<Message>;
+  
+  // Message Reactions
+  getMessageReactions(messageId: string): Promise<(MessageReaction & { user: User })[]>;
+  addMessageReaction(reaction: InsertMessageReaction): Promise<MessageReaction>;
+  removeMessageReaction(messageId: string, userId: string, emoji: string): Promise<void>;
 
   // Notes
   getSpaceNotes(spaceId: string): Promise<(Note & { author: User })[]>;
@@ -63,6 +72,7 @@ export class MemStorage implements IStorage {
   private spaces = new Map<string, Space>();
   private spaceMembers = new Map<string, SpaceMember>();
   private messages = new Map<string, Message>();
+  private messageReactions = new Map<string, MessageReaction>();
   private notes = new Map<string, Note>();
   private lessons = new Map<string, Lesson>();
   private lessonProgress = new Map<string, LessonProgress>();
@@ -238,6 +248,23 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getMemberRole(spaceId: string, userId: string): Promise<string | undefined> {
+    const member = Array.from(this.spaceMembers.values()).find(
+      m => m.spaceId === spaceId && m.userId === userId
+    );
+    return member?.role;
+  }
+
+  async updateMemberRole(spaceId: string, userId: string, role: string): Promise<void> {
+    const member = Array.from(this.spaceMembers.values()).find(
+      m => m.spaceId === spaceId && m.userId === userId
+    );
+    if (member) {
+      member.role = role;
+      this.spaceMembers.set(member.id, member);
+    }
+  }
+
   async updateMemberNotificationLevel(spaceId: string, userId: string, level: string): Promise<void> {
     const member = Array.from(this.spaceMembers.values()).find(
       m => m.spaceId === spaceId && m.userId === userId
@@ -271,6 +298,7 @@ export class MemStorage implements IStorage {
     const message: Message = {
       ...insertMessage,
       id,
+      parentMessageId: insertMessage.parentMessageId ?? null,
       content: insertMessage.content ?? null,
       messageType: insertMessage.messageType ?? "text",
       attachments: insertMessage.attachments ?? null,
@@ -279,6 +307,42 @@ export class MemStorage implements IStorage {
     
     this.messages.set(id, message);
     return message;
+  }
+
+  async getMessageReactions(messageId: string): Promise<(MessageReaction & { user: User })[]> {
+    const reactions = Array.from(this.messageReactions.values())
+      .filter(reaction => reaction.messageId === messageId)
+      .sort((a, b) => a.createdAt!.getTime() - b.createdAt!.getTime());
+    
+    return reactions.map(reaction => ({
+      ...reaction,
+      user: this.users.get(reaction.userId)!,
+    }));
+  }
+
+  async addMessageReaction(insertReaction: InsertMessageReaction): Promise<MessageReaction> {
+    const id = randomUUID();
+    const reaction: MessageReaction = {
+      ...insertReaction,
+      id,
+      createdAt: new Date(),
+    };
+    
+    this.messageReactions.set(id, reaction);
+    return reaction;
+  }
+
+  async removeMessageReaction(messageId: string, userId: string, emoji: string): Promise<void> {
+    const reactionToRemove = Array.from(this.messageReactions.entries()).find(
+      ([, reaction]) => 
+        reaction.messageId === messageId && 
+        reaction.userId === userId && 
+        reaction.emoji === emoji
+    );
+    
+    if (reactionToRemove) {
+      this.messageReactions.delete(reactionToRemove[0]);
+    }
   }
 
   async getSpaceNotes(spaceId: string): Promise<(Note & { author: User })[]> {
