@@ -1,0 +1,277 @@
+# PRD v1.3 — Spaces & Group Chat with Block Notes & Lesson Pages (Supabase + Drizzle + Next.js)
+
+**Version:** 1.3  
+**Author:** ChatPRD  
+**Date:** 2025-09-25
+
+---
+
+## TL;DR
+
+Build a **web-first collaboration app** centered on **Spaces** (collections of people & materials) where users can chat in real-time, share images, customize wallpapers, and create _block-based notes_ and _lesson pages_. Authentication will be **OTP-based** (email or phone) via **Supabase Auth**, with session handling enhanced by **Better Auth**. Database and schema are managed using **drizzle ORM** on **Supabase Postgres**. Chat uses **Supabase Realtime** channels. The frontend and backend are built with **Next.js (App Router)**.
+
+MVP now includes:
+
+- OTP-only login.
+    
+- Real-time chat with images and custom wallpapers.
+    
+- Rich profile editing (emoji avatar with background, camera/gallery, default option).
+    
+- Spaces with invite links and granular notification settings (all vs highlight).
+    
+- Block-based notes (text, to-do, link) with publish + notify.
+    
+- Lessons with gated topics, YouTube/external content, publish + notify, progress tracking.
+    
+
+---
+
+## Problem Statement
+
+Organizers need one place to run small group experiences (community, micro-courses, team spaces) where chat and curated learning materials coexist. Current chat apps separate conversations from materials and lack controlled publishing and notifications. Onboarding with passwords creates drop-off.
+
+**Solution:** A space-based collaboration product with OTP-only login, realtime chat, wallpapers, shared notes, structured lessons, and publish/notify flows.
+
+---
+
+## Goals
+
+### Business Goals
+
+- Increase retention by combining social chat, customization, and learning materials.
+    
+- Increase organizer engagement with easy publishing, notification control, and visual customization.
+    
+- Lower onboarding friction using OTP-only auth.
+    
+
+### User Goals
+
+- Quick login via email or phone OTP.
+    
+- Rich profile editing: name, username, emoji avatars (with background), camera/gallery upload, or default avatar.
+    
+- Customize chat wallpapers per Space.
+    
+- Organizers can create/manage Spaces, publish lessons/notes, and control notifications.
+    
+- Members can join Spaces, chat, consume lessons, mark progress, and view wallpapers.
+    
+- Everyone can author/edit notes as block-based pages.
+    
+
+### Non-goals (MVP)
+
+- Password-based auth, OAuth, or enterprise SSO.
+    
+- Advanced LMS features (certifications, grading, quizzes).
+    
+- Native mobile apps (web-first only).
+    
+
+---
+
+## Personas
+
+- **Organizer (Alice)** — creates Spaces, publishes lessons, customizes wallpapers, controls notifications.
+    
+- **Member (Budi)** — chats, consumes lessons, marks progress, views wallpapers.
+    
+- **Casual User (Citra)** — joins Spaces, posts messages, reacts to content, edits profile.
+    
+
+---
+
+## MVP Scope
+
+1. **Authentication (OTP)** via Supabase Auth (email/phone) + Better Auth session UX.
+    
+2. Profile editing:
+    
+    - Display name + username.
+        
+    - Profile picture: emoji avatar (with background color), camera/gallery upload, or default.
+        
+3. Spaces:
+    
+    - Create space (name + picture).
+        
+    - Invite via link.
+        
+    - Customize chat wallpaper (neutral → doodles/themes).
+        
+    - Manage notifications: every message or highlight-only.
+        
+    - View members.
+        
+4. Group chat:
+    
+    - Real-time text + images.
+        
+    - Wallpapers visible in chat room.
+        
+5. Notes:
+    
+    - Create/edit block-based notes: text (markdown-like), to-do list (add/delete, notify), links.
+        
+    - Publish flow → pop-up: notify all vs quiet.
+        
+    - If notify = yes → system announcement in chat.
+        
+6. Lessons:
+    
+    - Create a course via lesson page.
+        
+    - Edit: add description, add topics.
+        
+    - Topic options:
+        
+        - Availability: always available, sequential unlock (previous must be done), or custom date range.
+            
+        - Content: YouTube video (link + title + optional material note, embedded on publish) OR external link (link + title).
+            
+    - Publish flow → pop-up: notify all vs quiet.
+        
+    - Progress UX: mark lesson done → auto-advance to next; can unmark; navigate back to previous lessons.
+        
+
+---
+
+## Architecture Overview
+
+- **Frontend:** Next.js (App Router). Server Components for static content, Client Components for chat, realtime, and editors.
+    
+- **Backend:** Supabase (Postgres, Auth, Realtime, Storage) with drizzle ORM for schema + queries.
+    
+- **Auth:** OTP-first via Supabase Auth. Better Auth enhances session handling.
+    
+- **Realtime:** Supabase Realtime for chat messages + presence.
+    
+- **Deployment:** Vercel (Next.js) + Supabase project.
+    
+
+---
+
+## Authentication Flow (OTP-first)
+
+1. User enters email/phone.
+    
+2. Supabase sends OTP.
+    
+3. User enters OTP → Supabase validates → session cookie set.
+    
+4. First-time users set display name, username, and avatar.
+    
+
+---
+
+## Chat with Supabase Realtime
+
+- Clients subscribe to `messages` table per Space.
+    
+- Messages broadcast instantly; wallpaper context rendered per Space.
+    
+- Presence channels show online members.
+    
+- Images uploaded via Supabase Storage.
+    
+- Pagination via cursor on `created_at`.
+    
+
+---
+
+## Security & Authorization
+
+- Supabase RLS ensures only members can read/write messages and materials.
+    
+- Next.js route handlers validate membership before writes.
+    
+- OTP sessions validated via Supabase Auth helpers.
+    
+- Rate limiting on OTP requests and message posting.
+    
+
+---
+
+## UX & Flows
+
+1. **OTP login:** enter email/phone → OTP → login → onboarding.
+    
+2. **Profile editing:** set name/username; choose avatar (emoji + background, camera/gallery, or default).
+    
+3. **Spaces:** create/join space; customize wallpaper; invite via link; manage notifications.
+    
+4. **Chat:** realtime text + photo messages; wallpaper visible.
+    
+5. **Notes:** create/edit text, to-dos, links. Publish → pop-up notify. If yes, announcement in chat.
+    
+6. **Lessons:** create course; add topics with gating (always, sequential, custom date). Topics include YouTube embed or external link. Publish → notify pop-up. Progress tracked: mark done → auto-advance.
+    
+
+---
+
+## Acceptance Criteria
+
+- OTP login works (email/phone).
+    
+- Profile avatars: emoji with background, camera/gallery, or default.
+    
+- Spaces can be created, customized (wallpaper), and shared via invite links.
+    
+- Notifications: every message vs highlight-only.
+    
+- Chat: realtime text + photos; wallpaper displayed.
+    
+- Notes: block-based editor, to-do lists with notify option; publish flow works.
+    
+- Lessons: courses with topics; gating enforced; YouTube/external embed; publish + notify flow.
+    
+- Progress UX: mark/unmark lessons; sequential unlock works.
+    
+- RLS policies secure all resources.
+    
+
+---
+
+## Milestones
+
+1. Setup (Next.js + Supabase + drizzle).
+    
+2. OTP Auth + Profile setup (avatars, names).
+    
+3. Spaces (create, wallpaper, invite, notifications).
+    
+4. Chat MVP (text + images + realtime + wallpaper).
+    
+5. Notes editor with publish/notify.
+    
+6. Lessons with topics, gating, YouTube/external, publish/notify, progress UX.
+    
+7. Notifications + Better Auth middleware.
+    
+8. Hardening + Deploy.
+    
+
+---
+
+## Risks & Mitigations
+
+- **OTP deliverability**: fallback email if SMS fails.
+    
+- **Realtime scale**: paginate/prune messages, monitor.
+    
+- **RLS misconfigurations**: test with Supabase emulator.
+    
+- **Complex UX (wallpapers, avatars)**: incremental rollout.
+    
+
+---
+
+## Scenario Narrative
+
+Alice signs up with her email OTP, sets an emoji avatar with a purple background, and creates a Space. She sets the wallpaper to “growth doodle.” During Tuesday’s session, she publishes a YouTube lesson with a checklist note and chooses to notify. A system message appears in chat announcing the new lesson. Budi logs in with his OTP, joins the Space, views the wallpaper, watches the video embed, completes the lesson, and unlocks the next one.
+
+---
+
+_End of PRD v1.3_
