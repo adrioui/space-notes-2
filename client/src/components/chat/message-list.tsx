@@ -1,9 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRealtimeMessages } from '@/hooks/use-realtime';
 import { useAuth } from '@/hooks/use-auth';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Reply } from 'lucide-react';
 import EmojiAvatar from '@/components/ui/emoji-avatar';
-import type { Message, User } from '@shared/schema';
+import MessageReactions from './message-reactions';
+import MessageReply from './message-reply';
+import type { Message, User, SpaceMember } from '@shared/schema';
 
 interface MessageListProps {
   spaceId: string;
@@ -12,9 +17,15 @@ interface MessageListProps {
 export default function MessageList({ spaceId }: MessageListProps) {
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
+  const [replyingTo, setReplyingTo] = useState<(Message & { user: User }) | null>(null);
   
   const { data: initialMessages = [] } = useQuery<(Message & { user: User })[]>({
     queryKey: ['/api/spaces', spaceId, 'messages'],
+    enabled: !!spaceId,
+  });
+
+  const { data: members = [] } = useQuery<(SpaceMember & { user: User })[]>({
+    queryKey: ['/api/spaces', spaceId, 'members'],
     enabled: !!spaceId,
   });
 
@@ -33,6 +44,34 @@ export default function MessageList({ spaceId }: MessageListProps) {
       minute: '2-digit',
       hour12: true,
     });
+  };
+
+  const getUserRole = (userId: string) => {
+    const member = members.find(m => m.userId === userId);
+    return member?.role || 'member';
+  };
+
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return 'bg-red-500 text-white';
+      case 'moderator':
+        return 'bg-yellow-500 text-white';
+      default:
+        return '';
+    }
+  };
+
+  const findParentMessage = (parentMessageId: string) => {
+    return allMessages.find(msg => msg.id === parentMessageId);
+  };
+
+  const handleReply = (message: Message & { user: User }) => {
+    setReplyingTo(message);
+  };
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
   };
 
   return (
@@ -72,9 +111,20 @@ export default function MessageList({ spaceId }: MessageListProps) {
             
             <div className={`flex-1 flex flex-col ${isCurrentUser ? 'items-end' : 'items-start'}`}>
               <div className={`flex items-center space-x-2 mb-1 ${isCurrentUser ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                <span className="font-medium text-foreground text-sm">
-                  {isCurrentUser ? 'You' : message.user.displayName}
-                </span>
+                <div className="flex items-center space-x-1">
+                  <span className="font-medium text-foreground text-sm">
+                    {isCurrentUser ? 'You' : message.user.displayName}
+                  </span>
+                  {(() => {
+                    const userRole = getUserRole(message.userId);
+                    const badgeColor = getRoleBadgeColor(userRole);
+                    return userRole !== 'member' && badgeColor ? (
+                      <Badge variant="secondary" className={`text-xs px-1.5 py-0.5 ${badgeColor}`}>
+                        {userRole}
+                      </Badge>
+                    ) : null;
+                  })()}
+                </div>
                 <span className="text-xs text-muted-foreground">
                   {formatTime(message.createdAt!)}
                 </span>
@@ -85,6 +135,29 @@ export default function MessageList({ spaceId }: MessageListProps) {
                   ? 'bg-primary text-primary-foreground' 
                   : 'bg-card text-foreground'
               }`}>
+                {/* Reply Context */}
+                {message.parentMessageId && (() => {
+                  const parentMessage = findParentMessage(message.parentMessageId);
+                  return parentMessage ? (
+                    <div className={`mb-2 p-2 rounded border-l-2 ${
+                      isCurrentUser 
+                        ? 'border-primary-foreground/30 bg-primary-foreground/10' 
+                        : 'border-muted-foreground/30 bg-muted/50'
+                    }`}>
+                      <div className={`text-xs font-medium ${
+                        isCurrentUser ? 'text-primary-foreground/80' : 'text-muted-foreground'
+                      }`}>
+                        Replying to {parentMessage.user.displayName}
+                      </div>
+                      <div className={`text-xs truncate ${
+                        isCurrentUser ? 'text-primary-foreground/70' : 'text-muted-foreground/80'
+                      }`}>
+                        {parentMessage.content || (parentMessage.attachments ? 'Shared an image' : 'Message')}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+
                 {message.messageType === 'image' && message.attachments ? (
                   <div className="space-y-2">
                     {(message.attachments as any[]).map((attachment, index) => (
@@ -101,10 +174,42 @@ export default function MessageList({ spaceId }: MessageListProps) {
                   <p>{message.content}</p>
                 )}
               </div>
+              
+              {/* Message Reactions */}
+              {message.messageType !== 'system' && (
+                <div className="space-y-2">
+                  <MessageReactions messageId={message.id} />
+                  
+                  {/* Reply Button */}
+                  <div className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleReply(message)}
+                      className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                      data-testid={`button-reply-${message.id}`}
+                    >
+                      <Reply className="w-3 h-3 mr-1" />
+                      Reply
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );
       })}
+
+      {/* Reply Form */}
+      {replyingTo && (
+        <div className="mt-4">
+          <MessageReply
+            message={replyingTo}
+            spaceId={spaceId}
+            onCancel={handleCancelReply}
+          />
+        </div>
+      )}
     </div>
   );
 }
