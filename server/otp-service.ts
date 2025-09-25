@@ -38,6 +38,18 @@ try {
 }
 
 export class OTPService {
+  constructor() {
+    // Validate configuration in production
+    if (process.env.NODE_ENV === 'production') {
+      const hasEmailConfig = process.env.EMAIL_USER && process.env.EMAIL_PASS;
+      const hasSMSConfig = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER;
+      
+      if (!hasEmailConfig && !hasSMSConfig) {
+        throw new Error('OTP service requires either email configuration (EMAIL_USER, EMAIL_PASS) or SMS configuration (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER) in production');
+      }
+    }
+  }
+
   private generateOTP(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
@@ -83,11 +95,18 @@ export class OTPService {
 
   private async sendEmailOTP(email: string, code: string): Promise<{ success: boolean; message: string }> {
     if (!emailTransporter) {
-      console.log(`[DEV MODE] Email OTP for ${email}: ${code}`);
-      return { 
-        success: true, 
-        message: "OTP sent successfully (check console for development mode code)" 
-      };
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[DEV MODE] Email OTP for ${email}: ${code}`);
+        return { 
+          success: true, 
+          message: "OTP sent successfully (check console for development mode code)" 
+        };
+      } else {
+        return { 
+          success: false, 
+          message: "Email service not configured. Please contact administrator." 
+        };
+      }
     }
 
     try {
@@ -111,21 +130,27 @@ export class OTPService {
       return { success: true, message: "OTP sent to your email" };
     } catch (error: any) {
       console.error('Email send error:', error);
-      console.log(`[FALLBACK] Email OTP for ${email}: ${code}`);
       return { 
-        success: true, 
-        message: "OTP sent successfully (check console for fallback code)" 
+        success: false, 
+        message: "Failed to send email. Please try again or use a different contact method." 
       };
     }
   }
 
   private async sendSMSOTP(phone: string, code: string): Promise<{ success: boolean; message: string }> {
     if (!twilioClient || !process.env.TWILIO_PHONE_NUMBER) {
-      console.log(`[DEV MODE] SMS OTP for ${phone}: ${code}`);
-      return { 
-        success: true, 
-        message: "OTP sent successfully (check console for development mode code)" 
-      };
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[DEV MODE] SMS OTP for ${phone}: ${code}`);
+        return { 
+          success: true, 
+          message: "OTP sent successfully (check console for development mode code)" 
+        };
+      } else {
+        return { 
+          success: false, 
+          message: "SMS service not configured. Please contact administrator." 
+        };
+      }
     }
 
     try {
@@ -138,10 +163,9 @@ export class OTPService {
       return { success: true, message: "OTP sent to your phone" };
     } catch (error: any) {
       console.error('SMS send error:', error);
-      console.log(`[FALLBACK] SMS OTP for ${phone}: ${code}`);
       return { 
-        success: true, 
-        message: "OTP sent successfully (check console for fallback code)" 
+        success: false, 
+        message: "Failed to send SMS. Please try again or use a different contact method." 
       };
     }
   }
