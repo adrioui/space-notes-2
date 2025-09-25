@@ -14,8 +14,11 @@ import {
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   
-  // WebSocket server for real-time features
-  const wss = new WebSocketServer({ server: httpServer });
+  // WebSocket server for real-time features - use different path to avoid Vite HMR conflict
+  const wss = new WebSocketServer({ 
+    server: httpServer,
+    path: '/ws' // Separate path for application WebSocket
+  });
   const connections = new Map<string, Set<any>>();
 
   wss.on('connection', (ws, req) => {
@@ -80,7 +83,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Set session (in production, use proper session management)
-      req.session = { userId: user.id };
+      req.session.userId = user.id;
       
       res.json({ success: true, user, isNewUser: false });
     } catch (error: any) {
@@ -98,7 +101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.createUser(validation.data);
       
       // Set session
-      req.session = { userId: user.id };
+      req.session.userId = user.id;
       
       res.json({ success: true, user });
     } catch (error: any) {
@@ -125,8 +128,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/auth/logout", (req, res) => {
-    req.session = null;
-    res.json({ success: true });
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Could not log out" });
+      }
+      res.json({ success: true });
+    });
   });
 
   // User routes
