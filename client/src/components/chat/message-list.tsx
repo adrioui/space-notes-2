@@ -34,7 +34,7 @@ export default function MessageList({ spaceId }: MessageListProps) {
   // Combine initial messages with realtime updates
   useEffect(() => {
     setMessages(initialMessages);
-  }, [initialMessages, setMessages]);
+  }, [initialMessages]);
 
   const allMessages = realtimeMessages.length > 0 ? realtimeMessages : initialMessages;
 
