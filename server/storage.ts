@@ -135,6 +135,9 @@ export class MemStorage implements IStorage {
     const user: User = {
       ...insertUser,
       id,
+      email: insertUser.email ?? null,
+      phone: insertUser.phone ?? null,
+      avatarData: insertUser.avatarData ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -177,6 +180,8 @@ export class MemStorage implements IStorage {
       ...insertSpace,
       id,
       inviteCode,
+      description: insertSpace.description ?? null,
+      wallpaperUrl: insertSpace.wallpaperUrl ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -263,6 +268,8 @@ export class MemStorage implements IStorage {
     const message: Message = {
       ...insertMessage,
       id,
+      content: insertMessage.content ?? null,
+      attachments: insertMessage.attachments ?? null,
       createdAt: new Date(),
     };
     
@@ -296,9 +303,10 @@ export class MemStorage implements IStorage {
     const note: Note = {
       ...insertNote,
       id,
+      status: insertNote.status ?? "draft",
+      publishedAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
-      publishedAt: null,
     };
     
     this.notes.set(id, note);
@@ -346,9 +354,11 @@ export class MemStorage implements IStorage {
     const lesson: Lesson = {
       ...insertLesson,
       id,
+      description: insertLesson.description ?? null,
+      status: insertLesson.status ?? "draft",
+      publishedAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
-      publishedAt: null,
     };
     
     this.lessons.set(id, lesson);
@@ -386,7 +396,7 @@ export class MemStorage implements IStorage {
     if (existing) {
       const updated = { 
         ...existing, 
-        completed: insertProgress.completed,
+        completed: insertProgress.completed ?? false,
         completedAt: insertProgress.completed ? new Date() : null
       };
       this.lessonProgress.set(existing.id, updated);
@@ -397,6 +407,7 @@ export class MemStorage implements IStorage {
     const progress: LessonProgress = {
       ...insertProgress,
       id,
+      completed: insertProgress.completed ?? false,
       completedAt: insertProgress.completed ? new Date() : null,
       createdAt: new Date(),
     };
