@@ -32,7 +32,7 @@ export const spaceMembers = pgTable("space_members", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   spaceId: uuid("space_id").references(() => spaces.id, { onDelete: "cascade" }).notNull(),
   userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  role: text("role").notNull().default("member"), // organizer, member
+  role: text("role").notNull().default("member"), // admin, moderator, member
   notificationLevel: text("notification_level").notNull().default("all"), // all, highlights
   joinedAt: timestamp("joined_at").defaultNow(),
 });
@@ -41,9 +41,18 @@ export const messages = pgTable("messages", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   spaceId: uuid("space_id").references(() => spaces.id, { onDelete: "cascade" }).notNull(),
   userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  parentMessageId: uuid("parent_message_id"), // for replies - will reference messages.id
   content: text("content"),
   messageType: text("message_type").notNull().default("text"), // text, image, system
   attachments: jsonb("attachments"), // array of { type, url, name }
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const messageReactions = pgTable("message_reactions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  messageId: uuid("message_id").references(() => messages.id, { onDelete: "cascade" }).notNull(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  emoji: text("emoji").notNull(), // the emoji reaction (👍, ❤️, etc.)
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -101,6 +110,11 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
   createdAt: true,
 });
 
+export const insertMessageReactionSchema = createInsertSchema(messageReactions).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertNoteSchema = createInsertSchema(notes).omit({
   id: true,
   publishedAt: true,
@@ -129,6 +143,9 @@ export type Space = typeof spaces.$inferSelect;
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
+
+export type InsertMessageReaction = z.infer<typeof insertMessageReactionSchema>;
+export type MessageReaction = typeof messageReactions.$inferSelect;
 
 export type InsertNote = z.infer<typeof insertNoteSchema>;
 export type Note = typeof notes.$inferSelect;
