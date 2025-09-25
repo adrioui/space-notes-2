@@ -43,6 +43,7 @@ export interface IStorage {
 
   // Messages
   getMessages(spaceId: string, limit?: number, before?: string): Promise<(Message & { user: User })[]>;
+  getMessage(id: string): Promise<(Message & { user: User }) | undefined>;
   createMessage(message: InsertMessage): Promise<Message>;
   
   // Message Reactions
@@ -291,6 +292,16 @@ export class MemStorage implements IStorage {
       ...message,
       user: this.users.get(message.userId)!,
     })).reverse();
+  }
+
+  async getMessage(id: string): Promise<(Message & { user: User }) | undefined> {
+    const message = this.messages.get(id);
+    if (!message) return undefined;
+    
+    return {
+      ...message,
+      user: this.users.get(message.userId)!,
+    };
   }
 
   async createMessage(insertMessage: InsertMessage): Promise<Message> {

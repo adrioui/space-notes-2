@@ -7,6 +7,7 @@ import {
   insertUserSchema, 
   insertSpaceSchema, 
   insertMessageSchema,
+  insertMessageReactionSchema,
   insertNoteSchema,
   insertLessonSchema,
   insertLessonProgressSchema 
@@ -322,6 +323,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json(messageWithUser);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Message Reactions routes
+  app.get("/api/messages/:id/reactions", async (req, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const reactions = await storage.getMessageReactions(req.params.id);
+      res.json(reactions);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/messages/:id/reactions", async (req, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const validation = insertMessageReactionSchema.extend({
+        messageId: insertMessageReactionSchema.shape.messageId.default(req.params.id),
+        userId: insertMessageReactionSchema.shape.userId.default(userId)
+      }).safeParse({ ...req.body, messageId: req.params.id, userId });
+
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid reaction data" });
+      }
+
+      const reaction = await storage.addMessageReaction(validation.data);
+      const user = await storage.getUser(userId);
+      
+      const reactionWithUser = { ...reaction, user };
+      
+      // Get the message to find the space for broadcasting
+      const message = await storage.getMessage(req.params.id);
+      if (message) {
+        broadcastToSpace(message.spaceId, {
+          type: 'message_reaction_added',
+          data: reactionWithUser
+        });
+      }
+
+      res.json(reactionWithUser);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/messages/:id/reactions", async (req, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { emoji } = req.body;
+      if (!emoji) {
+        return res.status(400).json({ message: "Emoji is required" });
+      }
+
+      await storage.removeMessageReaction(req.params.id, userId, emoji);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // User Role Management routes
+  app.get("/api/spaces/:spaceId/members/:userId/role", async (req, res) => {
+    try {
+      const currentUserId = req.session?.userId;
+      if (!currentUserId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const isMember = await storage.isSpaceMember(req.params.spaceId, currentUserId);
+      if (!isMember) {
+        return res.status(403).json({ message: "Not a member of this space" });
+      }
+
+      const role = await storage.getMemberRole(req.params.spaceId, req.params.userId);
+      if (!role) {
+        return res.status(404).json({ message: "User not found in space" });
+      }
+
+      res.json({ role });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.put("/api/spaces/:spaceId/members/:userId/role", async (req, res) => {
+    try {
+      const currentUserId = req.session?.userId;
+      if (!currentUserId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      // Check if current user has permission to change roles (admin or moderator)
+      const currentUserRole = await storage.getMemberRole(req.params.spaceId, currentUserId);
+      if (!currentUserRole || (currentUserRole !== "admin" && currentUserRole !== "moderator")) {
+        return res.status(403).json({ message: "Insufficient permissions to change roles" });
+      }
+
+      const { role } = req.body;
+      if (!role || !["admin", "moderator", "member"].includes(role)) {
+        return res.status(400).json({ message: "Invalid role. Must be admin, moderator, or member" });
+      }
+
+      // Prevent non-admins from promoting to admin
+      if (role === "admin" && currentUserRole !== "admin") {
+        return res.status(403).json({ message: "Only admins can promote to admin" });
+      }
+
+      await storage.updateMemberRole(req.params.spaceId, req.params.userId, role);
+      res.json({ success: true, role });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
