@@ -13,7 +13,7 @@ export default function MessageList({ spaceId }: MessageListProps) {
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   
-  const { data: initialMessages = [] } = useQuery({
+  const { data: initialMessages = [] } = useQuery<(Message & { user: User })[]>({
     queryKey: ['/api/spaces', spaceId, 'messages'],
     enabled: !!spaceId,
   });

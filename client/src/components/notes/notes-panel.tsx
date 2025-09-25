@@ -12,7 +12,7 @@ export default function NotesPanel({ spaceId }: NotesPanelProps) {
   const [selectedNote, setSelectedNote] = useState<(Note & { author: User }) | null>(null);
   const [showEditor, setShowEditor] = useState(false);
 
-  const { data: notes = [] } = useQuery({
+  const { data: notes = [] } = useQuery<(Note & { author: User })[]>({
     queryKey: ['/api/spaces', spaceId, 'notes'],
     enabled: !!spaceId,
   });

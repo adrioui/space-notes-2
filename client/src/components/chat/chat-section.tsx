@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import MessageList from './message-list';
 import MessageInput from './message-input';
-import type { Space } from '@shared/schema';
+import type { Space, SpaceMember, User } from '@shared/schema';
 
 interface ChatSectionProps {
   spaceId: string | null;
@@ -10,7 +10,7 @@ interface ChatSectionProps {
 }
 
 export default function ChatSection({ spaceId, space }: ChatSectionProps) {
-  const { data: members = [] } = useQuery({
+  const { data: members = [] } = useQuery<(SpaceMember & { user: User })[]>({
     queryKey: ['/api/spaces', spaceId, 'members'],
     enabled: !!spaceId,
   });

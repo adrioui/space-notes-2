@@ -15,7 +15,7 @@ export default function Dashboard() {
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'notes' | 'lessons'>('notes');
 
-  const { data: spaces = [] } = useQuery({
+  const { data: spaces = [] } = useQuery<Space[]>({
     queryKey: ['/api/spaces'],
     enabled: isAuthenticated,
   });

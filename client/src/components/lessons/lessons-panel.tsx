@@ -12,7 +12,7 @@ export default function LessonsPanel({ spaceId }: LessonsPanelProps) {
   const [selectedLesson, setSelectedLesson] = useState<(Lesson & { author: User }) | null>(null);
   const [showCreator, setShowCreator] = useState(false);
 
-  const { data: lessons = [] } = useQuery({
+  const { data: lessons = [] } = useQuery<(Lesson & { author: User })[]>({
     queryKey: ['/api/spaces', spaceId, 'lessons'],
     enabled: !!spaceId,
   });
