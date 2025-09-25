@@ -1,0 +1,857 @@
+package ggsnEri
+
+import (
+	"encoding/xml"
+	"errors"
+	"fmt"
+	ggsnEriNe "googlerpc_go/config/coreRealtime/ggsnEri2"
+	"googlerpc_go/connection/kafkaNdm"
+	kcNew "googlerpc_go/connection/kafkaNew"
+	pg "googlerpc_go/connection/postgresql"
+	"googlerpc_go/helper"
+	"io/ioutil"
+	"math"
+	"regexp"
+	"runtime/debug"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/Knetic/govaluate"
+)
+
+//https://xml-to-go.github.io/
+
+type MeasValueBlock struct {
+	Text       string `xml:",chardata"`
+	MeasObjLdn string `xml:"measObjLdn,attr"`
+	R          []struct {
+		Text string `xml:",chardata"`
+		P    string `xml:"p,attr"`
+	} `xml:"r"`
+}
+
+type MeasCollecFile struct {
+	XMLName       xml.Name `xml:"measCollecFile"`
+	Text          string   `xml:",chardata"`
+	Xmlns         string   `xml:"xmlns,attr"`
+	If            string   `xml:"if,attr"`
+	Ctxsipos      string   `xml:"ctxsipos,attr"`
+	Ctxipos       string   `xml:"ctxipos,attr"`
+	Sys           string   `xml:"sys,attr"`
+	Ethxipos      string   `xml:"ethxipos,attr"`
+	L2serviceipos string   `xml:"l2serviceipos,attr"`
+	FileHeader    struct {
+		Text              string `xml:",chardata"`
+		FileFormatVersion string `xml:"fileFormatVersion,attr"`
+		VendorName        string `xml:"vendorName,attr"`
+		DnPrefix          string `xml:"dnPrefix,attr"`
+		FileSender        struct {
+			Text    string `xml:",chardata"`
+			LocalDn string `xml:"localDn,attr"`
+		} `xml:"fileSender"`
+		MeasCollec struct {
+			Text      string `xml:",chardata"`
+			BeginTime string `xml:"beginTime,attr"`
+		} `xml:"measCollec"`
+	} `xml:"fileHeader"`
+	MeasData struct {
+		Text           string `xml:",chardata"`
+		ManagedElement struct {
+			Text    string `xml:",chardata"`
+			LocalDn string `xml:"localDn,attr"`
+		} `xml:"managedElement"`
+		MeasInfo []struct {
+			Text       string `xml:",chardata"`
+			MeasInfoId string `xml:"measInfoId,attr"`
+			Job        struct {
+				Text  string `xml:",chardata"`
+				JobId string `xml:"jobId,attr"`
+			} `xml:"job"`
+			GranPeriod struct {
+				Text     string `xml:",chardata"`
+				Duration string `xml:"duration,attr"`
+				EndTime  string `xml:"endTime,attr"`
+			} `xml:"granPeriod"`
+			RepPeriod struct {
+				Text     string `xml:",chardata"`
+				Duration string `xml:"duration,attr"`
+			} `xml:"repPeriod"`
+			MeasType []struct {
+				Text string `xml:",chardata"`
+				P    string `xml:"p,attr"`
+			} `xml:"measType"`
+			MeasValue []struct {
+				Text       string `xml:",chardata"`
+				MeasObjLdn string `xml:"measObjLdn,attr"`
+				R          []struct {
+					Text string `xml:",chardata"`
+					P    string `xml:"p,attr"`
+				} `xml:"r"`
+			} `xml:"measValue"`
+		} `xml:"measInfo"`
+	} `xml:"measData"`
+	FileFooter struct {
+		Text       string `xml:",chardata"`
+		MeasCollec struct {
+			Text    string `xml:",chardata"`
+			EndTime string `xml:"endTime,attr"`
+		} `xml:"measCollec"`
+	} `xml:"fileFooter"`
+}
+
+// inserting to POSTGRESQL
+var rowIdList = []string{
+	"date",
+	"start_time",
+	"end_time",
+	"modified_time",
+	"timestamp",
+	"version",
+	"host",
+	"config_type",
+	"ne_name",
+	"type_obj",
+	"name",
+	"other_key",
+}
+
+var rowColumnTypeDate = []string{
+	"date",
+	"start_time",
+	"end_time",
+	"modified_time",
+}
+
+var rowKpiList = []string{
+	"cre_pdp_cmpl",
+	"cre_pdp_att",
+	"pdp_sr",
+	"cre_bearer_cmpl",
+	"cre_bearer_att",
+	"epssr",
+	"active_pdp",
+	"eps_active_bearer",
+	"pgw_available_ipv4_addresses_in_shared_ip_pool",
+	"if_in_ipv4_bytes",
+	"if_in_ipv6_bytes",
+	"downlink_throughput",
+	"if_out_ipv4_bytes",
+	"if_out_ipv6_bytes",
+	"uplink_throughput",
+	"total_throughput",
+	"pgw_available_addresses_in_range",
+	"pgw_addresses_in_quarantine_in_range",
+	"pgw_allocated_addresses_in_range",
+	"ip_pool_utilization",
+	"ue_subscriber",
+	"pgw_creation_sr",
+	"pgw_completed_eps_bearer_modification",
+	"pgw_attempted_eps_bearer_modification",
+	"pgw_modify_bearer_sr",
+	"ggsn_attempted_self_deactivation",
+	"ggsn_idle_timeout_deactivation",
+	"ggsn_session_timeout_deactivation",
+	"ggsn_completed_activation",
+	"ggsn_global_stats_ggsn_nbr_of_active_pdp_contexts",
+	"pdp_cut_off",
+	"ggsn_completed_update",
+	"ggsn_attempted_update",
+	"pdp_context_update_sr",
+	"utilisasi_ggsn_throughput",
+	"cpu_utilisasi_card_vm",
+	"memory_used",
+	"memory",
+	"memory_utilisasi_card_vm",
+	"gx_sr_ccr_initial_sent",
+	"gx_sr_ccr_termination_sent",
+	"gx_sr_ccr_update_sent",
+	"gx_sr_ccr_initial_failed",
+	"gx_sr_ccr_termination_failed",
+	"gx_sr_ccr_update_failed",
+	"gx_sr",
+	"gy_sr_ccr_initial_sent",
+	"gy_sr_ccr_termination_sent",
+	"gy_sr_ccr_update_sent",
+	"gy_sr_ccr_initial_failed",
+	"gy_sr_ccr_termination_failed",
+	"gy_sr_ccr_update_failed",
+	"gy_sr_user_unknown",
+	"gy_sr",
+	"incoming_payload_in_gb",
+	"outgoing_payload_in_gb",
+	"payload_gb",
+}
+
+var rowConflict = []string{
+	"date",
+	"start_time",
+	"end_time",
+	"config_type",
+	"host",
+	"type_obj",
+	"name",
+	"ne_name",
+	"other_key",
+}
+
+// inserting to POSTGRESQL
+var params = map[string]interface{}{
+	"tablename":           "core_ggsn_ericsson",
+	"constraint_name":     "uix_core_ggsn_ericsson",
+	"column_slice":        append(rowIdList, rowKpiList...),
+	"column_update_slice": append(rowKpiList, "version"),
+	"column_type_date":    rowColumnTypeDate,
+	"column_conflict":     rowConflict,
+}
+
+// end inserting to POSTGRESQL
+
+type ResultParsing struct {
+	data map[[4]interface{}]map[string]interface{}
+	lock sync.Mutex
+}
+
+func (resPars *ResultParsing) Init() {
+	resPars.data = make(map[[4]interface{}]map[string]interface{})
+}
+
+// class ReaderFile
+type ReaderFile struct {
+	readerWg             sync.WaitGroup
+	readerChan           chan string
+	putRowReaderToParser func(string, string, map[string]string, MeasValueBlock)
+	listPathSourceReader []string
+	newKpiFormula        ReturnTransformKpiFormula
+	err                  error
+}
+
+func (r *ReaderFile) ReaderInit(listPathSource []string, newKpiFormula ReturnTransformKpiFormula) {
+	r.readerChan = make(chan string)
+	r.listPathSourceReader = listPathSource
+	r.newKpiFormula = newKpiFormula
+	// w is worker, can add many worker if needed
+	for w := 1; w <= 25; w++ {
+		r.readerWg.Add(1)
+		go r.ReaderProcess()
+	}
+}
+func (r *ReaderFile) ReaderProcess() {
+	defer r.readerWg.Done()
+	for filename := range r.readerChan {
+		fileInput, err := helper.OpenFile(filename)
+		if err != nil {
+			panic(err)
+		}
+		byteValue, _ := ioutil.ReadAll(fileInput.Reader)
+		var dataXml MeasCollecFile
+		xml.Unmarshal(byteValue, &dataXml)
+		for _, info := range dataXml.MeasData.MeasInfo {
+			measId := info.MeasInfoId
+			neName := dataXml.MeasData.ManagedElement.LocalDn
+			if helper.Find(r.newKpiFormula.sliceMeasIdInfo, measId) {
+				measMapIdCounter := make(map[string]string)
+				for _, measType := range info.MeasType {
+					if helper.Find(r.newKpiFormula.sliceCounter, measType.Text) {
+						measMapIdCounter[measType.P] = measType.Text
+					}
+				}
+				for _, measValue := range info.MeasValue {
+					r.putRowReaderToParser(measId, neName, measMapIdCounter, measValue)
+				}
+			}
+		}
+		_ = fileInput.Close()
+	}
+}
+func (r *ReaderFile) CopyDataToParser(getFromReader func(string, string, map[string]string, MeasValueBlock)) {
+	// this will copy data (memory) from putRowReaderToParser to getFromReader
+	r.putRowReaderToParser = getFromReader
+}
+func (r *ReaderFile) ReaderExecute() error {
+	for _, fileName := range r.listPathSourceReader {
+		r.readerChan <- fileName
+	}
+	close(r.readerChan)
+	r.readerWg.Wait()
+	return r.err
+}
+
+//class Parser Row
+
+type Row struct {
+	measId           string
+	neName           string
+	measMapIdCounter map[string]string
+	MeasValue        MeasValueBlock
+}
+
+type Parser struct {
+	parserWg                sync.WaitGroup
+	rowParserChan           chan Row
+	putRowParserToCalculate func(key [4]interface{}, value map[string]interface{})
+	err                     error
+	rowResultParsing        ResultParsing
+	PropertiesPostgreObj    *pg.StremlineDB
+	host                    string
+	version                 int64
+	startDateTime           string
+	endDateTime             string
+	modifiedTimeFile        string
+}
+
+func (pars *Parser) ParserInit(PostgreObj *pg.StremlineDB, host string, startDateTime string, endDateTime string, modifiedTimeFile string) {
+	// if you use chanel
+	// dont forget for create it use "make"
+	// make 100 buffer chanel (async)
+	pars.rowParserChan = make(chan Row, 100)
+	pars.rowResultParsing.Init()
+	pars.PropertiesPostgreObj = PostgreObj
+	pars.host = host
+	pars.version = time.Now().Unix()
+	pars.startDateTime = startDateTime
+	pars.endDateTime = endDateTime
+	pars.modifiedTimeFile = modifiedTimeFile
+	// w is worker, can add many worker if needed
+	for w := 1; w <= 30; w++ {
+		pars.parserWg.Add(1)
+		go pars.ParserProcess()
+	}
+}
+func (pars *Parser) ParserProcess() {
+	defer pars.parserWg.Done()
+	for row := range pars.rowParserChan {
+		var measObjLdnName string
+		var otherKeys string
+		otherKeys = ""
+		if row.measId == "pgw-bearer-mgmt-gngp-apn" || row.measId == "pgw-bearer-mgmt-apn" || row.measId == "pgw-number-of-bearers-apn" {
+			// measObjLdn="/epg:epg/pgw/apn[name=3gmckinsey]"
+			measObjLdnName = strings.Replace(strings.Split(row.MeasValue.MeasObjLdn, "name=")[1], "]", "", -1)
+		} else if row.measId == "pgw-shared-ip-pool" {
+			// measObjLdn="/epg:epg/pgw/shared-ip-pool[pool-name=ip-pool-ACS]"
+			measObjLdnName = strings.Replace(strings.Replace(strings.Split(row.MeasValue.MeasObjLdn, "name=")[1], "]", "", -1), "ip-pool-", "", -1)
+		} else if row.measId == "up-payload-ip-ni-if" {
+			// measObjLdn = "/epg:epg/user-plane/network-instance[ni=Gi-M2MPLNWSU-Vr]/interface[if=core]"
+			// Define a regular expression pattern to match the desired value
+			pattern := `ni=Gi-(\w+)-Vr`
+			// Compile the regular expression
+			regex := regexp.MustCompile(pattern)
+			// Find the first match in the input string
+			match := regex.FindStringSubmatch(row.MeasValue.MeasObjLdn)
+			// Check if a match was found
+			if len(match) > 1 {
+				// Extract and print the matched value
+				value := match[1]
+				//fmt.Println(value)
+				measObjLdnName = value
+			} else {
+				///epg:epg/user-plane/network-instance[ni=GiCorpLL142]/interface[if=core]
+				pattern := `ni=Gi(\w+)-Vr`
+				// Compile the regular expression
+				regex := regexp.MustCompile(pattern)
+				// Find the first match in the input string
+				match := regex.FindStringSubmatch(row.MeasValue.MeasObjLdn)
+				// Check if a match was found
+				if len(match) > 1 {
+					// Extract and print the matched value
+					value := match[1]
+					//fmt.Println(value)
+					measObjLdnName = value
+				} else {
+					////epg:epg/user-plane/large-flow-shaping/network-instance[ni=GiTelkomsel-Vr]
+					pattern := `ni=(Gi\w+)\]`
+					// Compile the regular expression
+					regex := regexp.MustCompile(pattern)
+					// Find the first match in the input string
+					match := regex.FindStringSubmatch(row.MeasValue.MeasObjLdn)
+					// Check if a match was found
+					if len(match) > 1 {
+						// Extract and print the matched value
+						value := match[1]
+						//fmt.Println(value)
+						measObjLdnName = value
+					} else {
+						continue
+					}
+				}
+			}
+		} else if row.measId == "pgw-ip-address-per-range" {
+			// measObjLdn="/epg:epg/pgw/shared-ip-pool[name=ip-pool-3gmckinsey]/address-range[name=10.19.2.0/23]"
+			// Define a regular expression pattern to match the desired value
+			pattern := `name=ip-pool-(\w+)`
+			// Compile the regular expression
+			regex := regexp.MustCompile(pattern)
+			// Find the first match in the input string
+			match := regex.FindStringSubmatch(row.MeasValue.MeasObjLdn)
+			// Check if a match was found
+			if len(match) > 1 {
+				// Extract and print the matched value
+				value := match[1]
+				//fmt.Println(value)
+				measObjLdnName = value
+			} else {
+				//fmt.Println("Pattern not found in the input string.")
+				continue
+			}
+			// measObjLdn="/epg:epg/pgw/shared-ip-pool[name=ip-pool-3gmckinsey]/address-range[name=10.19.2.0/23]"
+			addressRange := strings.Replace(strings.Split(row.MeasValue.MeasObjLdn, "address-range[name=")[1], "]", "", -1)
+			otherKeys = fmt.Sprintf("ip-pool %s", addressRange)
+		} else if row.measId == "pgw-apn-gy" {
+			// Define a regular expression pattern to match the desired value
+			pattern := `name=([^/\]]+)`
+
+			// Compile the regular expression
+			regex := regexp.MustCompile(pattern)
+
+			// Find the first match in the input string
+			match := regex.FindStringSubmatch(row.MeasValue.MeasObjLdn)
+
+			// Check if a match was found
+			if len(match) > 1 {
+				// Extract and print the matched value
+				value := match[1]
+				//fmt.Println(value)
+				measObjLdnName = value
+			} else {
+				//fmt.Println("Pattern not found in the input string.")
+				continue
+			}
+		} else if row.measId == "pgw-apn-gx" {
+			// Define a regular expression pattern to match the desired value
+			pattern := `name=([^/\]]+)`
+
+			// Compile the regular expression
+			regex := regexp.MustCompile(pattern)
+
+			// Find the first match in the input string
+			match := regex.FindStringSubmatch(row.MeasValue.MeasObjLdn)
+
+			// Check if a match was found
+			if len(match) > 1 {
+				// Extract and print the matched value
+				value := match[1]
+				//fmt.Println(value)
+				measObjLdnName = value
+			} else {
+				//fmt.Println("Pattern not found in the input string.")
+				continue
+			}
+		} else if row.measId == "board-information" {
+			continue
+		} else {
+			continue
+		}
+		//if measObjLdnName == "" {
+		//	fmt.Println("measObj->", row.measId)
+		//}
+		//fmt.Println("measID->", row.measId)
+		measObjLdnName = strings.ToUpper(measObjLdnName)
+		var keys [4]interface{}
+		keys[0] = row.neName
+		keys[1] = "apn"
+		keys[2] = measObjLdnName
+		keys[3] = otherKeys
+		startDateObj, err := time.Parse("2006-01-02 15:04:05", pars.startDateTime)
+		if err != nil {
+			panic(err)
+		}
+		valueMap := make(map[string]interface{})
+		valueMap["date"] = pars.startDateTime
+		valueMap["start_time"] = pars.startDateTime
+		valueMap["end_time"] = pars.endDateTime
+		valueMap["modified_time"] = pars.modifiedTimeFile
+		valueMap["timestamp"] = startDateObj.Unix()
+		valueMap["version"] = pars.version
+		valueMap["host"] = pars.host
+		valueMap["config_type"] = "GGSN_ERI"
+		valueMap["ne_name"] = row.neName
+		valueMap["type_obj"] = "apn"
+		valueMap["name"] = measObjLdnName
+		valueMap["other_key"] = otherKeys
+		for _, entry := range row.MeasValue.R {
+			val, ok := row.measMapIdCounter[entry.P]
+			if ok {
+				// tranform measId:
+				// from "pgw-bearer-mgmt-gngp-apn",
+				// to "pgw_bearer_mgmt_gngp_apn",
+				// tranform counterName:
+				// from cre-pdp-att
+				// to cre_pdp_att
+				// adjust if another replace caracter
+				headerMeasId := strings.Replace(row.measId, "-", "_", -1)
+				headerCounterId := strings.Replace(val, "-", "_", -1)
+				joinHeader := headerMeasId + "_" + headerCounterId
+				valFloat, err := strconv.ParseFloat(entry.Text, 64)
+				if err != nil {
+					continue
+				}
+				valueMap[joinHeader] = valFloat
+			}
+		}
+		//fmt.Println("valuemap->", valueMap)
+
+		pars.rowResultParsing.lock.Lock()
+		if val, ok := pars.rowResultParsing.data[keys]; ok {
+			for keyMap, valMap := range valueMap {
+				val[keyMap] = valMap
+			}
+			pars.rowResultParsing.data[keys] = val
+		} else {
+			pars.rowResultParsing.data[keys] = valueMap
+		}
+		pars.rowResultParsing.lock.Unlock()
+	}
+
+}
+func (pars *Parser) GetDataFromReader(measId string, neName string, mapIdCounter map[string]string, measValue MeasValueBlock) {
+	// sending rowFromReader to rowParserChan
+	data := Row{
+		measId:           measId,
+		neName:           neName,
+		measMapIdCounter: mapIdCounter,
+		MeasValue:        measValue,
+	}
+	pars.rowParserChan <- data
+}
+func (pars *Parser) CopyDataToCalculate(getFromParser func(key [4]interface{}, value map[string]interface{})) {
+	// this will copy data (memory) from putRowParserToCalculate to getFromParser
+	pars.putRowParserToCalculate = getFromParser
+}
+func (pars *Parser) ParserFinish() error {
+	// if you use chanel
+	// dont forget for close it
+	close(pars.rowParserChan)
+	pars.parserWg.Wait()
+	for k, v := range pars.rowResultParsing.data {
+		pars.putRowParserToCalculate(k, v)
+	}
+	return pars.err
+}
+
+type DataRow struct {
+	key   [4]interface{}
+	value map[string]interface{}
+}
+
+// class Calculate Row
+type Calculate struct {
+	calculateWg               sync.WaitGroup
+	rowCalculateChan          chan DataRow
+	putRowKpiCalculateToLoad  func(value map[string]interface{})
+	propertiesSlicekpiFormula ReturnTransformKpiFormula
+	err                       error
+}
+
+func (cal *Calculate) CalculateInit(newKpiFormula ReturnTransformKpiFormula) {
+	// if you use chanel
+	// dont forget for create it use "make"
+	// make 100 buffer chanel (async)
+	cal.rowCalculateChan = make(chan DataRow, 100)
+	cal.propertiesSlicekpiFormula = newKpiFormula
+	// w is worker, can add many worker if needed
+	for w := 1; w <= 30; w++ {
+		cal.calculateWg.Add(1)
+		go cal.CalculateProcess()
+	}
+}
+func (cal *Calculate) CalculateProcess() {
+	defer cal.calculateWg.Done()
+	for row := range cal.rowCalculateChan {
+		kpiRowMap := make(map[string]interface{})
+		for _, colName := range rowIdList {
+			kpiRowMap[colName] = row.value[colName]
+		}
+		for _, entry := range cal.propertiesSlicekpiFormula.sliceKpiFormula {
+			kpi_name := entry.Name
+			formula := entry.Formula
+			//fmt.Println("kpi name->", kpi_name)
+			//fmt.Println("formula->", formula)
+			expression, err := govaluate.NewEvaluableExpression(formula)
+
+			if err != nil {
+				//fmt.Println("error->", err)
+				expression, err = govaluate.NewEvaluableExpressionWithFunctions(formula, helper.EvaluateFunctions)
+				if err != nil {
+					//fmt.Println("error next->", err)
+					//change not found counter formula to nil
+					kpiRowMap[kpi_name] = nil
+				} else {
+					result, _ := expression.Evaluate(row.value)
+					if result != nil {
+						if math.IsNaN(result.(float64)) {
+							result = nil
+						}
+					} else {
+						result = nil
+					}
+					// handle pembagi 0
+					if result != nil {
+						if math.IsInf(result.(float64), 0) {
+							result = 0.0
+						}
+					}
+					kpiRowMap[kpi_name] = result
+				}
+			} else {
+				result, _ := expression.Evaluate(row.value)
+				if result != nil {
+					if math.IsNaN(result.(float64)) {
+						result = nil
+					}
+				} else {
+					result = nil
+				}
+				// handle pembagi 0
+				if result != nil {
+					if math.IsInf(result.(float64), 0) {
+						result = 0.0
+					}
+				}
+				kpiRowMap[kpi_name] = result
+			}
+		}
+		//fmt.Println("result kpi->", kpiRowMap)
+		cal.putRowKpiCalculateToLoad(kpiRowMap)
+	}
+
+}
+func (cal *Calculate) GetDataFromParser(key [4]interface{}, value map[string]interface{}) {
+	// sending rowFromParser to rowCalculateChan
+	data := DataRow{
+		key:   key,
+		value: value,
+	}
+	cal.rowCalculateChan <- data
+}
+func (cal *Calculate) CopyDataToLoad(getKpiFromCalculate func(value map[string]interface{})) {
+	// this will copy data (memory) from putRowReaderToParser to getFromReader
+	cal.putRowKpiCalculateToLoad = getKpiFromCalculate
+}
+func (cal *Calculate) CalculateFinish() error {
+	// if you use chanel
+	// dont forget for close it
+	close(cal.rowCalculateChan)
+	cal.calculateWg.Wait()
+	return cal.err
+}
+
+//class Calculate Row
+
+type DataRowLoad struct {
+	value map[string]interface{}
+}
+
+type Load struct {
+	loadWg            sync.WaitGroup
+	rowChan           chan DataRowLoad
+	err               error
+	lockCount         sync.Mutex
+	totalCount        int64
+	kafkaObjLoad      kcNew.KafkaNewClient
+	kafkaNdmObjLoad   kafkaNdm.KafkaNdmClient
+	topicName         string
+	rowLoadPostgresql map[interface{}]map[string]interface{}
+	PostgreObjInsert  *pg.StremlineDB
+}
+
+func (ld *Load) LoadInit(kafkaNewObj kcNew.KafkaNewClient, kafkaNdmObj kafkaNdm.KafkaNdmClient, topicName string, PostgreObjInsert *pg.StremlineDB) {
+	// if you use chanel
+	// dont forget for create it use "make"
+	// make 100 buffer chanel (async)
+	ld.rowChan = make(chan DataRowLoad, 100)
+	ld.totalCount = 0
+	ld.kafkaObjLoad = kafkaNewObj
+	ld.kafkaNdmObjLoad = kafkaNdmObj
+	ld.topicName = topicName
+	ld.rowLoadPostgresql = make(map[interface{}]map[string]interface{})
+	ld.PostgreObjInsert = PostgreObjInsert
+	// w is worker, can add many worker if needed
+	for w := 1; w <= 30; w++ {
+		ld.loadWg.Add(1)
+		go ld.LoadProcess()
+	}
+}
+func (ld *Load) LoadProcess() {
+	defer ld.loadWg.Done()
+	for row := range ld.rowChan {
+		// inserting to POSTGRESQL
+		if row.value["name"] == "" {
+			continue
+		}
+		var keysConstraint [9]interface{}
+		keysConstraint[0] = row.value["date"]
+		keysConstraint[1] = row.value["start_time"]
+		keysConstraint[2] = row.value["end_time"]
+		keysConstraint[3] = row.value["config_type"]
+		keysConstraint[4] = row.value["host"]
+		keysConstraint[5] = row.value["type_obj"]
+		keysConstraint[6] = row.value["name"]
+		keysConstraint[7] = row.value["ne_name"]
+		keysConstraint[8] = row.value["other_key"]
+		var interfaceKeys interface{} = keysConstraint
+		ld.lockCount.Lock()
+		ld.rowLoadPostgresql[interfaceKeys] = row.value
+		ld.lockCount.Unlock()
+	}
+}
+func (ld *Load) GetDataKpiOrCounterFromCalculate(value map[string]interface{}) {
+	// sending rowFromCalculateOrParser to rowLoadChan
+	data := DataRowLoad{
+		value: value,
+	}
+	ld.rowChan <- data
+}
+
+func (ld *Load) LoadFinish() error {
+	// if you use chanel
+	// dont forget for close it
+	close(ld.rowChan)
+	ld.loadWg.Wait()
+	ld.kafkaObjLoad.FlushProduce()
+	ld.kafkaNdmObjLoad.FlushProduce()
+	// pararel loading postgres & kafka
+	var actionLoad = []string{"postgres", "kafka_ndm"}
+	for _, action := range actionLoad {
+		ld.loadWg.Add(1)
+		if action == "postgres" {
+			go pg.FlushRowsUpsertQueryOnConstraint(&ld.loadWg, helper.FLUSH_INSERT_VALUE, params, ld.rowLoadPostgresql, ld.PostgreObjInsert)
+		} else if action == "kafka_ndm" {
+			go ld.kafkaNdmObjLoad.AsyncSendMessage(&ld.loadWg, ld.topicName, 10000, ld.rowLoadPostgresql)
+		} else {
+			// kafka
+			go ld.kafkaObjLoad.AsyncSendMessage(&ld.loadWg, ld.topicName, 10000, ld.rowLoadPostgresql)
+
+		}
+	}
+	ld.loadWg.Wait()
+	ld.totalCount = int64(len(ld.rowLoadPostgresql))
+	return ld.err
+}
+
+type KpiFormulaTrans struct {
+	Name    string `json:"name"`
+	Formula string `json:"formula"`
+}
+
+type ReturnTransformKpiFormula struct {
+	sliceMeasIdInfo []string
+	sliceCounter    []string
+	sliceKpiFormula []KpiFormulaTrans
+}
+
+func transformKpiFormula(SlicekpiFormula pg.KpiConfig) ReturnTransformKpiFormula {
+	returnTranformKpiFormula := ReturnTransformKpiFormula{}
+	var dumpCounter []string
+	var dumpMeasIdInfo []string
+	sliceKpiForTrans := []KpiFormulaTrans{}
+	for _, entry := range SlicekpiFormula {
+		//print("isi entry", entry.Formula)
+		if entry.Formula == "" {
+			continue
+		}
+		if !strings.Contains(entry.Formula, "/") || !strings.Contains(entry.Formula, "*") || !strings.Contains(entry.Formula, "+") || !strings.Contains(entry.Formula, "-") {
+			measId := strings.Split(entry.Formula, ".")[0]
+			counter := strings.Split(entry.Formula, ".")[1]
+			dumpMeasIdInfo = append(dumpMeasIdInfo, measId)
+			dumpCounter = append(dumpCounter, counter)
+		}
+		// tranform Formula
+		// from "pgw-bearer-mgmt-gngp-apn.cre-pdp-att",
+		// to "pgw_bearer_mgmt_gngp_apn_cre_pdp_att",
+		// adjust if another replace caracter
+		formula := strings.Replace(strings.Replace(entry.Formula, ".", "_", -1), "-", "_", -1)
+		if entry.Name == "gx_sr" {
+			formula = "100 * ((pgw_apn_gx_ccr_initial_sent + pgw_apn_gx_ccr_termination_sent + pgw_apn_gx_ccr_update_sent) - (pgw_apn_gx_ccr_initial_failed + pgw_apn_gx_ccr_termination_failed + pgw_apn_gx_ccr_update_failed)) / (pgw_apn_gx_ccr_initial_sent + pgw_apn_gx_ccr_termination_sent + pgw_apn_gx_ccr_update_sent)"
+		} else if entry.Name == "gy_sr" {
+			formula = "100 * ((pgw_apn_gy_ccr_initial_sent + pgw_apn_gy_ccr_termination_sent + pgw_apn_gy_ccr_update_sent) - (pgw_apn_gy_ccr_initial_failed + pgw_apn_gy_ccr_termination_failed + pgw_apn_gy_ccr_update_failed - pgw_apn_gy_user_unknown)) / (pgw_apn_gy_ccr_initial_sent + pgw_apn_gy_ccr_termination_sent + pgw_apn_gy_ccr_update_sent)"
+		} else if entry.Name == "ip_pool_utilization" {
+			formula = "(100*(pgw_ip_address_per_range_pgw_available_addresses_in_range)/(pgw_ip_address_per_range_pgw_addresses_in_quarantine_in_range+pgw_ip_address_per_range_pgw_allocated_addresses_in_range+pgw_ip_address_per_range_pgw_available_addresses_in_range))"
+		}
+		sliceKpiForTrans = append(sliceKpiForTrans, KpiFormulaTrans{Name: entry.Name, Formula: formula})
+	}
+	returnTranformKpiFormula.sliceCounter = dumpCounter
+	returnTranformKpiFormula.sliceMeasIdInfo = dumpMeasIdInfo
+	returnTranformKpiFormula.sliceKpiFormula = sliceKpiForTrans
+	return returnTranformKpiFormula
+}
+
+func Start(kafkaNewObj kcNew.KafkaNewClient, kafkaNdmObj kafkaNdm.KafkaNdmClient, PostgreObj *pg.StremlineDB, markId string, configName string, typeConfig string, host string, listPathSource []string, startDateTime string, endDateTime string, modifiedTimeFile string) map[string]interface{} {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered CONFIG from panic:", r)
+			debug.PrintStack()
+		}
+	}()
+	// inserting to POSTGRESQL
+	var PostgreObjInsert = new(pg.StremlineDB)
+	PostgreObjInsert.InitInsertData()
+	defer PostgreObjInsert.CloseConnDB()
+	// end inserting to POSTGRESQL
+	start := time.Now()
+	// start core ggsn ericsson APN
+	dataSource := PostgreObj.GetDataSourceInfo(markId, configName, typeConfig, host)
+	topicName := dataSource["topicName"].(string)
+	SlicekpiFormula := PostgreObj.GetKpiFormula(markId)
+	newKpiFormula := transformKpiFormula(SlicekpiFormula)
+
+	readerFileWorker := ReaderFile{}
+	readerFileWorker.ReaderInit(listPathSource, newKpiFormula)
+
+	parserWorker := Parser{}
+	parserWorker.ParserInit(PostgreObj, host, startDateTime, endDateTime, modifiedTimeFile)
+	readerFileWorker.CopyDataToParser(parserWorker.GetDataFromReader)
+
+	calculateWorker := Calculate{}
+	calculateWorker.CalculateInit(newKpiFormula)
+	parserWorker.CopyDataToCalculate(calculateWorker.GetDataFromParser)
+
+	loadWorkerKpi := Load{}
+	loadWorkerKpi.LoadInit(kafkaNewObj, kafkaNdmObj, topicName, PostgreObjInsert)
+	calculateWorker.CopyDataToLoad(loadWorkerKpi.GetDataKpiOrCounterFromCalculate)
+
+	err := readerFileWorker.ReaderExecute()
+	if err != nil {
+		panic(errors.New(err.Error()))
+	}
+	parserWorker.ParserFinish()
+	calculateWorker.CalculateFinish()
+	loadWorkerKpi.LoadFinish()
+	// end core ggsn ericsson APN
+	// start core ggsn ericsson NE
+	dataSourceNe := PostgreObj.GetDataSourceInfo("CORE_GGSN_ERI_2", "ggsn_eri_ne", "ggsn_eri_ne", "10.52.19.24")
+	topicNameNe := dataSourceNe["topicName"].(string)
+	SlicekpiFormulaNe := PostgreObj.GetKpiFormula("CORE_GGSN_ERI_2")
+	newKpiFormulaNe := ggsnEriNe.TransformKpiFormula(SlicekpiFormulaNe)
+
+	readerFileWorkerNe := ggsnEriNe.ReaderFile{}
+	readerFileWorkerNe.ReaderInit(listPathSource, newKpiFormulaNe)
+
+	parserWorkerNe := ggsnEriNe.Parser{}
+	parserWorkerNe.ParserInit(PostgreObj, "10.52.19.24", startDateTime, endDateTime, modifiedTimeFile)
+	readerFileWorkerNe.CopyDataToParser(parserWorkerNe.GetDataFromReader)
+
+	calculateWorkerNe := ggsnEriNe.Calculate{}
+	calculateWorkerNe.CalculateInit(newKpiFormulaNe)
+	parserWorkerNe.CopyDataToCalculate(calculateWorkerNe.GetDataFromParser)
+
+	loadWorkerKpiNe := ggsnEriNe.Load{}
+	loadWorkerKpiNe.LoadInit(kafkaNewObj, kafkaNdmObj, topicNameNe, PostgreObjInsert)
+	calculateWorkerNe.CopyDataToLoad(loadWorkerKpiNe.GetDataKpiOrCounterFromCalculate)
+
+	err = readerFileWorkerNe.ReaderExecute()
+	if err != nil {
+		panic(errors.New(err.Error()))
+	}
+	parserWorkerNe.ParserFinish()
+	calculateWorkerNe.CalculateFinish()
+	loadWorkerKpiNe.LoadFinish()
+	// end core ggsn ericsson NE
+
+	duration := time.Since(start)
+	returnRes := make(map[string]interface{})
+	returnRes["totalRowKpi"] = loadWorkerKpi.totalCount
+	returnRes["duration"] = int(math.Ceil(duration.Seconds()))
+
+	return returnRes
+}
