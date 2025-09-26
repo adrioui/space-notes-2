@@ -10,6 +10,9 @@ if (!databaseUrl) {
   throw new Error("SUPABASE_DATABASE_URL or DATABASE_URL must be set");
 }
 
-// Create the database connection
+// Create the database connection with better error handling
 const sql = neon(databaseUrl);
-export const db = drizzle(sql, { schema });
+export const db = drizzle(sql, { 
+  schema,
+  logger: false  // Disable logging to reduce noise
+});

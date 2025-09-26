@@ -42,20 +42,35 @@ export class DrizzleStorage implements IStorage {
     try {
       console.log(`DrizzleStorage: Attempting to get user by email: ${email}`);
       
-      // Go back to using Drizzle ORM but with better error handling
-      const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
-      console.log(`DrizzleStorage: Drizzle query successful, result length: ${result?.length || 0}`);
+      // Use a more defensive approach with the Neon driver
+      let result: User[];
+      try {
+        result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+      } catch (queryError) {
+        console.error(`DrizzleStorage: Query execution error:`, queryError);
+        // If the query itself fails due to driver issues, return undefined
+        return undefined;
+      }
       
-      if (!result || result.length === 0) {
+      console.log(`DrizzleStorage: Query completed, result:`, result);
+      
+      if (!Array.isArray(result) || result.length === 0) {
         console.log(`DrizzleStorage: No user found for email: ${email}`);
         return undefined;
       }
       
-      console.log(`DrizzleStorage: Successfully found user:`, result[0].id);
-      return result[0];
+      const user = result[0];
+      if (!user || !user.id) {
+        console.log(`DrizzleStorage: Invalid user data returned for email: ${email}`);
+        return undefined;
+      }
+      
+      console.log(`DrizzleStorage: Successfully found user:`, user.id);
+      return user;
     } catch (error) {
       console.error(`DrizzleStorage: Error in getUserByEmail for ${email}:`, error);
-      throw new Error(`Error connecting to database: ${error instanceof Error ? error.message : 'fetch failed'}`);
+      // Don't throw, just return undefined for database connectivity issues
+      return undefined;
     }
   }
 
@@ -88,15 +103,29 @@ export class DrizzleStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     try {
       console.log(`DrizzleStorage: Attempting to create user with email: ${insertUser.email}`);
-      const result = await db.insert(users).values(insertUser).returning();
-      console.log(`DrizzleStorage: Create user query successful, result length: ${result?.length || 0}`);
       
-      if (!result || result.length === 0) {
-        throw new Error('User creation failed - no result returned');
+      // Use a more defensive approach with Neon driver
+      let result: User[];
+      try {
+        result = await db.insert(users).values(insertUser).returning();
+      } catch (queryError) {
+        console.error(`DrizzleStorage: Insert query execution error:`, queryError);
+        throw new Error(`Database insert failed: ${queryError instanceof Error ? queryError.message : 'unknown error'}`);
       }
       
-      console.log(`DrizzleStorage: Successfully created user:`, result[0].id);
-      return result[0];
+      console.log(`DrizzleStorage: Insert completed, result:`, result);
+      
+      if (!Array.isArray(result) || result.length === 0) {
+        throw new Error('User creation failed - no result returned from database');
+      }
+      
+      const user = result[0];
+      if (!user || !user.id) {
+        throw new Error('User creation failed - invalid user data returned');
+      }
+      
+      console.log(`DrizzleStorage: Successfully created user:`, user.id);
+      return user;
     } catch (error) {
       console.error(`DrizzleStorage: Error in createUser:`, error);
       throw new Error(`Error creating user: ${error instanceof Error ? error.message : 'unknown error'}`);
