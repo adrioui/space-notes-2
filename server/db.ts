@@ -2,8 +2,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import * as schema from "@shared/schema";
 
-// Try regular DATABASE_URL first, then fallback to SUPABASE_DATABASE_URL  
-// This avoids pooler connection issues
+// Use DATABASE_URL first since pooler connection has DNS issues
 const databaseUrl = process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
 
 if (!databaseUrl) {

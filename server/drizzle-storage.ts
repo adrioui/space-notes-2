@@ -1,5 +1,6 @@
 import { eq, and, sql } from "drizzle-orm";
 import { db } from "./db";
+import { neon } from "@neondatabase/serverless";
 import {
   users,
   spaces,
@@ -27,6 +28,11 @@ import {
 } from "@shared/schema";
 import type { IStorage } from "./storage";
 
+// Create direct SQL client for problematic operations - use DATABASE_URL first due to DNS issues with pooler
+const databaseUrl = process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
+console.log("DrizzleStorage: Using database URL type:", databaseUrl?.includes('pooler') ? 'pooler' : 'direct');
+const directSql = neon(databaseUrl!);
+
 export class DrizzleStorage implements IStorage {
   constructor() {
     console.log("DrizzleStorage: Database connection initialized");
@@ -42,34 +48,23 @@ export class DrizzleStorage implements IStorage {
     try {
       console.log(`DrizzleStorage: Attempting to get user by email: ${email}`);
       
-      // Use a more defensive approach with the Neon driver
-      let result: User[];
-      try {
-        result = await db.select().from(users).where(eq(users.email, email)).limit(1);
-      } catch (queryError) {
-        console.error(`DrizzleStorage: Query execution error:`, queryError);
-        // If the query itself fails due to driver issues, return undefined
-        return undefined;
-      }
+      // Use direct SQL to avoid Drizzle ORM Neon driver issues
+      const queryText = `SELECT id, email, phone, display_name, username, avatar_type, avatar_data, created_at, updated_at 
+                         FROM users WHERE email = $1 LIMIT 1`;
       
-      console.log(`DrizzleStorage: Query completed, result:`, result);
+      const result = await directSql(queryText, [email]);
+      console.log(`DrizzleStorage: Direct SQL query completed, rows length:`, result.rows?.length);
       
-      if (!Array.isArray(result) || result.length === 0) {
+      if (!result.rows || result.rows.length === 0) {
         console.log(`DrizzleStorage: No user found for email: ${email}`);
         return undefined;
       }
       
-      const user = result[0];
-      if (!user || !user.id) {
-        console.log(`DrizzleStorage: Invalid user data returned for email: ${email}`);
-        return undefined;
-      }
-      
+      const user = result.rows[0] as User;
       console.log(`DrizzleStorage: Successfully found user:`, user.id);
       return user;
     } catch (error) {
       console.error(`DrizzleStorage: Error in getUserByEmail for ${email}:`, error);
-      // Don't throw, just return undefined for database connectivity issues
       return undefined;
     }
   }
@@ -104,26 +99,27 @@ export class DrizzleStorage implements IStorage {
     try {
       console.log(`DrizzleStorage: Attempting to create user with email: ${insertUser.email}`);
       
-      // Use a more defensive approach with Neon driver
-      let result: User[];
-      try {
-        result = await db.insert(users).values(insertUser).returning();
-      } catch (queryError) {
-        console.error(`DrizzleStorage: Insert query execution error:`, queryError);
-        throw new Error(`Database insert failed: ${queryError instanceof Error ? queryError.message : 'unknown error'}`);
-      }
+      // Use direct SQL to avoid Drizzle ORM Neon driver issues
+      const queryText = `INSERT INTO users (email, phone, display_name, username, avatar_type, avatar_data) 
+                         VALUES ($1, $2, $3, $4, $5, $6) 
+                         RETURNING id, email, phone, display_name, username, avatar_type, avatar_data, created_at, updated_at`;
       
-      console.log(`DrizzleStorage: Insert completed, result:`, result);
+      const result = await directSql(queryText, [
+        insertUser.email || null,
+        insertUser.phone || null,  // Use || instead of ?? to handle empty strings
+        insertUser.displayName,
+        insertUser.username,
+        insertUser.avatarType || 'emoji',
+        insertUser.avatarData || null
+      ]);
       
-      if (!Array.isArray(result) || result.length === 0) {
+      console.log(`DrizzleStorage: Direct SQL insert completed, rows length:`, result.rows?.length);
+      
+      if (!result.rows || result.rows.length === 0) {
         throw new Error('User creation failed - no result returned from database');
       }
       
-      const user = result[0];
-      if (!user || !user.id) {
-        throw new Error('User creation failed - invalid user data returned');
-      }
-      
+      const user = result.rows[0] as User;
       console.log(`DrizzleStorage: Successfully created user:`, user.id);
       return user;
     } catch (error) {
