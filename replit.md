@@ -24,10 +24,12 @@ Preferred communication style: Simple, everyday language.
 - **Development Setup**: Hot module replacement with Vite middleware integration
 
 ## Database Layer
-- **ORM**: Drizzle ORM with PostgreSQL dialect
+- **ORM**: Drizzle ORM with PostgreSQL dialect  
 - **Schema Management**: Shared schema definitions between client and server
-- **Database Provider**: Neon Database (serverless PostgreSQL)
+- **Database Provider**: Neon Database (serverless PostgreSQL) via DATABASE_URL
+- **Storage Implementation**: DrizzleStorage class providing full database persistence for all data operations
 - **Migration Strategy**: Drizzle Kit for schema migrations and database pushes
+- **Connection**: Uses Neon HTTP driver with fallback from DATABASE_URL to SUPABASE_DATABASE_URL
 
 ## Authentication System
 - **Method**: OTP-only authentication (email or phone)

@@ -88,14 +88,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if user exists
-      let user = await storage.getUserByEmail(contact) || await storage.getUserByPhone(contact);
+      console.log(`[DEBUG] OTP verified for contact: ${contact}, checking if user exists`);
+      let user;
+      try {
+        user = await storage.getUserByEmail(contact) || await storage.getUserByPhone(contact);
+      } catch (error) {
+        console.error(`[DEBUG] User lookup failed: ${error}`);
+        // If user lookup fails, treat as new user
+        return res.json({ success: true, isNewUser: true, contact });
+      }
       
       if (!user) {
         // New user - return flag for profile setup
+        console.log(`[DEBUG] No user found for ${contact}, treating as new user`);
         return res.json({ success: true, isNewUser: true, contact });
       }
 
-      // Set session
+      // Existing user - set session and return user data
+      console.log(`[DEBUG] Found existing user: ${user.id}`);
       req.session.userId = user.id;
       
       res.json({ success: true, user, isNewUser: false });

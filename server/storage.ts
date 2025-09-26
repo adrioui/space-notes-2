@@ -496,4 +496,6 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+import { DrizzleStorage } from "./drizzle-storage";
+
+export const storage = new DrizzleStorage();
