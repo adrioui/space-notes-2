@@ -48,19 +48,15 @@ export class DrizzleStorage implements IStorage {
     try {
       console.log(`DrizzleStorage: Attempting to get user by email: ${email}`);
       
-      // Use direct SQL to avoid Drizzle ORM Neon driver issues
-      const queryText = `SELECT id, email, phone, display_name, username, avatar_type, avatar_data, created_at, updated_at 
-                         FROM users WHERE email = $1 LIMIT 1`;
+      // Use Drizzle ORM to ensure proper column mapping and type safety
+      const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
       
-      const result = await directSql(queryText, [email]);
-      console.log(`DrizzleStorage: Direct SQL query completed, rows length:`, result.rows?.length);
-      
-      if (!result.rows || result.rows.length === 0) {
+      if (!result || result.length === 0) {
         console.log(`DrizzleStorage: No user found for email: ${email}`);
         return undefined;
       }
       
-      const user = result.rows[0] as User;
+      const user = result[0] as User;
       console.log(`DrizzleStorage: Successfully found user:`, user.id);
       return user;
     } catch (error) {
@@ -73,20 +69,20 @@ export class DrizzleStorage implements IStorage {
     try {
       console.log(`DrizzleStorage: Attempting to get user by phone: ${phone}`);
       
-      // Go back to using Drizzle ORM but with better error handling
+      // Use Drizzle ORM to ensure proper column mapping and type safety
       const result = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
-      console.log(`DrizzleStorage: Drizzle query successful, result length: ${result?.length || 0}`);
       
       if (!result || result.length === 0) {
         console.log(`DrizzleStorage: No user found for phone: ${phone}`);
         return undefined;
       }
       
-      console.log(`DrizzleStorage: Successfully found user:`, result[0].id);
-      return result[0];
+      const user = result[0] as User;
+      console.log(`DrizzleStorage: Successfully found user:`, user.id);
+      return user;
     } catch (error) {
       console.error(`DrizzleStorage: Error in getUserByPhone for ${phone}:`, error);
-      throw new Error(`Error connecting to database: ${error instanceof Error ? error.message : 'fetch failed'}`);
+      throw error; // Properly propagate errors instead of masking them
     }
   }
 
@@ -98,29 +94,34 @@ export class DrizzleStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     try {
       console.log(`DrizzleStorage: Attempting to create user with email: ${insertUser.email}`);
+      console.log(`DrizzleStorage: Insert data:`, JSON.stringify(insertUser, null, 2));
       
-      // Use direct SQL to avoid Drizzle ORM Neon driver issues
-      const queryText = `INSERT INTO users (email, phone, display_name, username, avatar_type, avatar_data) 
-                         VALUES ($1, $2, $3, $4, $5, $6) 
-                         RETURNING id, email, phone, display_name, username, avatar_type, avatar_data, created_at, updated_at`;
+      // Explicitly handle phone field to prevent constraint violations
+      const phoneValue = insertUser.phone?.trim();
+      const cleanPhone = phoneValue && phoneValue.length > 0 ? phoneValue : null;
       
-      const result = await directSql(queryText, [
-        insertUser.email || null,
-        insertUser.phone || null,  // Use || instead of ?? to handle empty strings
-        insertUser.displayName,
-        insertUser.username,
-        insertUser.avatarType || 'emoji',
-        insertUser.avatarData || null
-      ]);
+      console.log(`DrizzleStorage: Phone value processing: "${insertUser.phone}" -> "${phoneValue}" -> ${cleanPhone}`);
       
-      console.log(`DrizzleStorage: Direct SQL insert completed, rows length:`, result.rows?.length);
+      // Use Drizzle ORM for INSERT without RETURNING to avoid Neon driver issues
+      await db.insert(users).values({
+        email: insertUser.email || null,
+        phone: cleanPhone,  // Explicitly set to null for empty/undefined
+        displayName: insertUser.displayName,
+        username: insertUser.username,
+        avatarType: insertUser.avatarType || 'emoji',
+        avatarData: insertUser.avatarData || null
+      });
       
-      if (!result.rows || result.rows.length === 0) {
-        throw new Error('User creation failed - no result returned from database');
+      console.log(`DrizzleStorage: Insert completed successfully`);
+      
+      // Query for the created user by email (which is unique)
+      const user = await this.getUserByEmail(insertUser.email!);
+      
+      if (!user) {
+        throw new Error('User creation failed - user not found after insert');
       }
       
-      const user = result.rows[0] as User;
-      console.log(`DrizzleStorage: Successfully created user:`, user.id);
+      console.log(`DrizzleStorage: Successfully created and retrieved user:`, user.id);
       return user;
     } catch (error) {
       console.error(`DrizzleStorage: Error in createUser:`, error);

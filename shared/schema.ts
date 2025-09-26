@@ -96,6 +96,8 @@ export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  phone: z.string().optional().transform(val => val?.trim() || null),
 });
 
 export const insertSpaceSchema = createInsertSchema(spaces).omit({
