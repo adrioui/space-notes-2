@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import MessageList from './message-list';
 import MessageInput from './message-input';
+import MembersDialog from '../space/members-dialog';
 import type { Space, SpaceMember, User } from '@shared/schema';
 
 interface ChatSectionProps {
@@ -47,9 +48,11 @@ export default function ChatSection({ spaceId, space }: ChatSectionProps) {
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="sm" data-testid="button-show-members">
-            <i className="fas fa-users text-muted-foreground"></i>
-          </Button>
+          <MembersDialog spaceId={spaceId}>
+            <Button variant="ghost" size="sm" data-testid="button-show-members">
+              <i className="fas fa-users text-muted-foreground"></i>
+            </Button>
+          </MembersDialog>
           <Button variant="ghost" size="sm" data-testid="button-space-settings">
             <i className="fas fa-cog text-muted-foreground"></i>
           </Button>
