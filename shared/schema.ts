@@ -12,6 +12,9 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   avatarType: text("avatar_type").notNull().default("emoji"), // emoji, upload, default
   avatarData: jsonb("avatar_data"), // { emoji, backgroundColor } or { imageUrl }
+  // NextAuth required columns
+  emailVerified: timestamp("emailVerified", { mode: "date" }),
+  image: text("image"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
