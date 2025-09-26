@@ -28,8 +28,8 @@ import {
 } from "@shared/schema";
 import type { IStorage } from "./storage";
 
-// Create direct SQL client for problematic operations - use DATABASE_URL first due to DNS issues with pooler
-const databaseUrl = process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
+// Create direct SQL client for problematic operations - use SUPABASE_DATABASE_URL first to avoid pooler DNS issues  
+const databaseUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
 console.log("DrizzleStorage: Using database URL type:", databaseUrl?.includes('pooler') ? 'pooler' : 'direct');
 const directSql = neon(databaseUrl!);
 

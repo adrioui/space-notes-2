@@ -496,6 +496,8 @@ export class MemStorage implements IStorage {
   }
 }
 
-import { DrizzleStorage } from "./drizzle-storage";
+// Temporarily use MemStorage due to Supabase pooler DNS issues
+// import { DrizzleStorage } from "./drizzle-storage";
+// export const storage = new DrizzleStorage();
 
-export const storage = new DrizzleStorage();
+export const storage = new MemStorage();
