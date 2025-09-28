@@ -6,8 +6,8 @@ import { render } from '../../test/utils'
 // Mock real-time chat component
 const RealtimeChat = ({ spaceId }: { spaceId: string }) => {
   const [messages, setMessages] = useState<any[]>([])
-  const [newMessage, setNewMessage] = useState('')
-  const [isConnected, setIsConnected] = useState(false)
+  const [newMessage, setNewMessage] = useState<string>('')
+  const [isConnected, setIsConnected] = useState<boolean>(false)
 
   useEffect(() => {
     // Simulate WebSocket connection
@@ -30,7 +30,7 @@ const RealtimeChat = ({ spaceId }: { spaceId: string }) => {
         user: 'Current User',
         timestamp: new Date()
       }
-      setMessages(prev => [...prev, message])
+      setMessages((prev: any[]) => [...prev, message])
       setNewMessage('')
     }
   }
@@ -42,7 +42,7 @@ const RealtimeChat = ({ spaceId }: { spaceId: string }) => {
       </div>
       
       <div data-testid="messages-container">
-        {messages.map(msg => (
+        {messages.map((msg: any) => (
           <div key={msg.id} data-testid={`message-${msg.id}`}>
             <strong>{msg.user}: </strong>
             <span>{msg.content}</span>
@@ -76,6 +76,9 @@ const RealtimeChat = ({ spaceId }: { spaceId: string }) => {
 // Mock React hooks
 const useState = vi.fn()
 const useEffect = vi.fn()
+
+// Import React for proper types
+import { useState as realUseState, useEffect as realUseEffect } from 'react'
 
 describe('Real-time Chat Integration', () => {
   beforeEach(() => {

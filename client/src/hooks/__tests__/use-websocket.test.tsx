@@ -36,7 +36,7 @@ class MockWebSocket {
 
 // Mock useWebSocket hook
 const useWebSocket = (url: string) => {
-  const [isConnected, setIsConnected] = useState(false)
+  const [isConnected, setIsConnected] = useState<boolean>(false)
   const [messages, setMessages] = useState<any[]>([])
 
   useEffect(() => {
@@ -54,7 +54,7 @@ const useWebSocket = (url: string) => {
 
   const sendMessage = (message: any) => {
     // Mock sending message
-    setMessages(prev => [...prev, message])
+    setMessages((prev: any[]) => [...prev, message])
   }
 
   return { isConnected, messages, sendMessage }
@@ -63,6 +63,9 @@ const useWebSocket = (url: string) => {
 // Mock React hooks
 const useState = vi.fn()
 const useEffect = vi.fn()
+
+// Import React for proper types
+import { useState as realUseState, useEffect as realUseEffect } from 'react'
 
 describe('useWebSocket Hook', () => {
   beforeEach(() => {

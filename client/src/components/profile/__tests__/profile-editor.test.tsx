@@ -95,7 +95,7 @@ describe('ProfileEditor Component', () => {
     
     await user.upload(imageInput, file)
 
-    expect(imageInput.files![0]).toBe(file)
+    expect((imageInput as HTMLInputElement).files![0]).toBe(file)
   })
 
   it('triggers logout', async () => {

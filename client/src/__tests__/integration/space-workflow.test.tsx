@@ -6,7 +6,7 @@ import { render } from '../../test/utils'
 // Mock complete space workflow component
 const SpaceWorkflow = () => {
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null)
-  const [showCreator, setShowCreator] = useState(false)
+  const [showCreator, setShowCreator] = useState<boolean>(false)
 
   const mockSpaces = [
     { id: 'space-1', name: 'Test Space 1', emoji: '🚀' },
@@ -82,6 +82,9 @@ const SpaceWorkflow = () => {
 
 // Mock React hooks
 const useState = vi.fn()
+
+// Import React for proper types
+import { useState as realUseState } from 'react'
 
 describe('Space Workflow Integration', () => {
   beforeEach(() => {

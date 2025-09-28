@@ -9,7 +9,7 @@ import { z } from 'zod'
 // Mock form components for testing
 const Form = ({ children, ...props }: any) => <form {...props}>{children}</form>
 const FormControl = ({ children }: any) => <div>{children}</div>
-const FormField = ({ render }: any) => render({ field: {} })
+const FormField = ({ render }: { render: (props: { field: any }) => React.ReactNode }) => render({ field: { value: '', onChange: () => {} } })
 const FormItem = ({ children }: any) => <div>{children}</div>
 const FormLabel = ({ children }: any) => <label>{children}</label>
 const FormMessage = () => <div />
