@@ -73,19 +73,10 @@ const RealtimeChat = ({ spaceId }: { spaceId: string }) => {
   )
 }
 
-// Mock React hooks
-const useState = vi.fn()
-const useEffect = vi.fn()
-
-// Import React for proper types
-import { useState as realUseState, useEffect as realUseEffect } from 'react'
+// Import React for proper functionality
+import { useState, useEffect } from 'react'
 
 describe('Real-time Chat Integration', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    useState.mockImplementation((initial) => [initial, vi.fn()])
-    useEffect.mockImplementation((fn) => fn())
-  })
 
   it('establishes real-time connection', async () => {
     render(<RealtimeChat spaceId="space-1" />)

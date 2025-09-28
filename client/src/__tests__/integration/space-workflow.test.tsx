@@ -80,17 +80,10 @@ const SpaceWorkflow = () => {
   )
 }
 
-// Mock React hooks
-const useState = vi.fn()
-
-// Import React for proper types
-import { useState as realUseState } from 'react'
+// Import React for proper functionality
+import { useState } from 'react'
 
 describe('Space Workflow Integration', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    useState.mockImplementation((initial) => [initial, vi.fn()])
-  })
 
   it('completes full space selection workflow', async () => {
     const user = userEvent.setup()
