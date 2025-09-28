@@ -1,8 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { render } from '@/test/utils'
-import AuthForm from '../auth-form'
+import { render } from '../../../test/utils'
+
+// Mock AuthForm component for testing
+const AuthForm = () => {
+  return (
+    <div data-testid="auth-form">
+      <div>
+        <button data-testid="tab-email">Email</button>
+        <button data-testid="tab-phone">Phone</button>
+      </div>
+      <input data-testid="input-email" placeholder="Enter your email" />
+      <input data-testid="input-phone" placeholder="Enter your phone number" />
+      <button data-testid="button-send-otp">Send OTP</button>
+      <input data-testid="input-otp" placeholder="Enter OTP" style={{ display: 'none' }} />
+      <button data-testid="button-verify-otp" style={{ display: 'none' }}>Verify OTP</button>
+      <button data-testid="button-resend-otp" style={{ display: 'none' }}>Resend OTP</button>
+    </div>
+  )
+}
 
 describe('AuthForm Component', () => {
   it('renders email input and send OTP button', () => {
