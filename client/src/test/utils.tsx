@@ -3,6 +3,11 @@ import { render, RenderOptions } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Router } from 'wouter'
 
+// Mock AuthProvider
+const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  return <div data-testid="auth-provider">{children}</div>
+}
+
 // Custom render function with providers
 const AllProviders = ({ children }: { children: React.ReactNode }) => {
   const queryClient = new QueryClient({
@@ -14,11 +19,13 @@ const AllProviders = ({ children }: { children: React.ReactNode }) => {
   })
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <Router>
-        {children}
-      </Router>
-    </QueryClientProvider>
+    <AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <Router>
+          {children}
+        </Router>
+      </QueryClientProvider>
+    </AuthProvider>
   )
 }
 

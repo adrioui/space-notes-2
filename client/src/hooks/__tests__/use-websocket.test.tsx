@@ -70,7 +70,10 @@ import { useState as realUseState, useEffect as realUseEffect } from 'react'
 describe('useWebSocket Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    global.WebSocket = MockWebSocket as any
+    Object.defineProperty(global, 'WebSocket', {
+      writable: true,
+      value: MockWebSocket,
+    })
     useState.mockImplementation((initial) => [initial, vi.fn()])
     useEffect.mockImplementation((fn) => fn())
   })
