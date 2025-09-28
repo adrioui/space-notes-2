@@ -2,8 +2,6 @@
 # This file is automatically loaded by docker-compose
 # Use it for local development customizations
 
-version: '3.8'
-
 services:
   app:
     # Override for development optimizations
