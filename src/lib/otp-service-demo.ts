@@ -1,15 +1,19 @@
 /**
  * DEMO OTP Service - Complete Bypass System
- * 
+ *
  * This service completely bypasses all external dependencies:
  * - No email sending (nodemailer disabled)
  * - No SMS sending (Twilio disabled)
  * - All OTP verifications return success
  * - Demo accounts work with any OTP code
  * - Regular accounts work with any OTP code
- * 
+ *
  * Perfect for development, testing, and demo environments
  */
+
+import { db } from './db'
+import { users } from '@shared/schema'
+import { eq } from 'drizzle-orm'
 
 interface OTPData {
   code: string;
@@ -115,16 +119,18 @@ export class DemoOTPService {
   verifyOTP(contact: string, inputCode: string): { success: boolean; message: string; user?: any } {
     this.validateConfiguration();
 
-    // Demo account bypass - always succeeds
+    // Demo account bypass - always succeeds, but use actual database ID
     if (this.isDemoAccount(contact)) {
       console.log(`🎭 DEMO BYPASS: Auto-approving OTP for demo account: ${contact}`);
 
+      // Note: This is just for OTP verification, actual user lookup happens in auth
+      // We'll return a success but the auth system will do the database lookup
       const isAdmin = contact.toLowerCase() === 'demo-admin@example.com';
       return {
         success: true,
         message: "Demo account verified successfully!",
         user: {
-          id: isAdmin ? '550e8400-e29b-41d4-a716-446655440001' : '550e8400-e29b-41d4-a716-446655440002',
+          id: 'demo-placeholder', // This will be replaced by actual DB lookup in auth
           email: contact,
           name: isAdmin ? 'Demo Admin' : 'Demo Member',
           role: isAdmin ? 'admin' : 'member'

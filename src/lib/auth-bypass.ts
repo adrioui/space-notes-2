@@ -1,5 +1,8 @@
 import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
+import { db } from './db'
+import { users } from '@shared/schema'
+import { eq } from 'drizzle-orm'
 
 /**
  * Complete Bypass NextAuth Configuration
@@ -69,11 +72,67 @@ export const authOptionsBypass: NextAuthOptions = {
 
           const contact = credentials.contact.toLowerCase();
 
-          // Handle demo accounts
+          // Handle demo accounts - look up actual user from database
           if (isDemoAccount(contact)) {
-            const demoUser = DEMO_USERS[contact as keyof typeof DEMO_USERS];
-            console.log('🎭 BYPASS AUTH: Demo account login successful', demoUser.email);
-            return demoUser;
+            try {
+              console.log(`🎭 BYPASS AUTH: Looking up demo user: ${contact}`)
+
+              // Look up the actual demo user from the database
+              const demoUser = await db
+                .select({
+                  id: users.id,
+                  email: users.email,
+                  displayName: users.displayName,
+                  username: users.username,
+                })
+                .from(users)
+                .where(eq(users.email, contact))
+                .limit(1)
+
+              if (demoUser.length > 0) {
+                const user = demoUser[0]
+                console.log(`🎭 BYPASS AUTH: Found demo user in database: ${user.id}`)
+
+                return {
+                  id: user.id, // Use actual database ID
+                  email: user.email,
+                  name: user.displayName || (contact.includes('admin') ? 'Demo Admin' : 'Demo Member'),
+                  role: contact.includes('admin') ? 'admin' : 'member',
+                  image: null,
+                }
+              } else {
+                console.log(`🎭 BYPASS AUTH: Demo user not found in database: ${contact}`)
+
+                // Demo user doesn't exist, create them
+                const isAdmin = contact.toLowerCase() === 'demo-admin@example.com'
+                const newUser = {
+                  email: contact,
+                  displayName: isAdmin ? 'Demo Admin' : 'Demo Member',
+                  username: isAdmin ? 'demo-admin' : 'demo-member',
+                  avatarType: 'emoji' as const,
+                  avatarData: {
+                    emoji: isAdmin ? '👑' : '👤',
+                    backgroundColor: isAdmin ? '#6366F1' : '#10B981'
+                  },
+                }
+
+                const createdUsers = await db.insert(users).values(newUser).returning()
+                const createdUser = createdUsers[0]
+
+                console.log(`🎭 BYPASS AUTH: Created demo user: ${createdUser.id}`)
+
+                return {
+                  id: createdUser.id, // Use actual database ID
+                  email: createdUser.email,
+                  name: createdUser.displayName,
+                  role: isAdmin ? 'admin' : 'member',
+                  image: null,
+                }
+              }
+            } catch (dbError) {
+              console.error(`🎭 BYPASS AUTH: Database error for demo user ${contact}:`, dbError)
+              return null
+            }
           }
 
           // Handle regular accounts - create user on the fly

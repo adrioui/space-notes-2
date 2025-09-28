@@ -1,6 +1,9 @@
 import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { otpService } from './otp-service-demo'
+import { db } from './db'
+import { users } from '@shared/schema'
+import { eq } from 'drizzle-orm'
 
 // Simplified NextAuth configuration for Vercel compatibility
 export const authOptionsSimple: NextAuthOptions = {
@@ -33,16 +36,66 @@ export const authOptionsSimple: NextAuthOptions = {
             return null
           }
 
-          // For demo accounts, return a simple user object
+          // For demo accounts, look up actual user from database
           const isDemoAccount = ['demo-admin@example.com', 'demo-member@example.com'].includes(credentials.contact.toLowerCase())
-          
+
           if (isDemoAccount) {
-            const isAdmin = credentials.contact.toLowerCase() === 'demo-admin@example.com'
-            return {
-              id: isAdmin ? '550e8400-e29b-41d4-a716-446655440001' : '550e8400-e29b-41d4-a716-446655440002',
-              email: credentials.contact,
-              name: isAdmin ? 'Demo Admin' : 'Demo Member',
-              image: null,
+            try {
+              console.log(`🎭 BYPASS AUTH: Looking up demo user: ${credentials.contact}`)
+
+              // Look up the actual demo user from the database
+              const demoUser = await db
+                .select({
+                  id: users.id,
+                  email: users.email,
+                  displayName: users.displayName,
+                  username: users.username,
+                })
+                .from(users)
+                .where(eq(users.email, credentials.contact.toLowerCase()))
+                .limit(1)
+
+              if (demoUser.length > 0) {
+                const user = demoUser[0]
+                console.log(`🎭 BYPASS AUTH: Found demo user in database: ${user.id}`)
+
+                return {
+                  id: user.id, // Use actual database ID
+                  email: user.email,
+                  name: user.displayName || (credentials.contact.includes('admin') ? 'Demo Admin' : 'Demo Member'),
+                  image: null,
+                }
+              } else {
+                console.log(`🎭 BYPASS AUTH: Demo user not found in database: ${credentials.contact}`)
+
+                // Demo user doesn't exist, create them
+                const isAdmin = credentials.contact.toLowerCase() === 'demo-admin@example.com'
+                const newUser = {
+                  email: credentials.contact.toLowerCase(),
+                  displayName: isAdmin ? 'Demo Admin' : 'Demo Member',
+                  username: isAdmin ? 'demo-admin' : 'demo-member',
+                  avatarType: 'emoji' as const,
+                  avatarData: {
+                    emoji: isAdmin ? '👑' : '👤',
+                    backgroundColor: isAdmin ? '#6366F1' : '#10B981'
+                  },
+                }
+
+                const createdUsers = await db.insert(users).values(newUser).returning()
+                const createdUser = createdUsers[0]
+
+                console.log(`🎭 BYPASS AUTH: Created demo user: ${createdUser.id}`)
+
+                return {
+                  id: createdUser.id, // Use actual database ID
+                  email: createdUser.email,
+                  name: createdUser.displayName,
+                  image: null,
+                }
+              }
+            } catch (dbError) {
+              console.error(`🎭 BYPASS AUTH: Database error for demo user ${credentials.contact}:`, dbError)
+              return null
             }
           }
 
