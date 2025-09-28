@@ -1,8 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { useToast } from '@/hooks/use-toast'
 import EmojiAvatar from '@/components/ui/emoji-avatar'
 import ProfileSettings from '@/components/modals/profile-settings-client'
 import SpaceCreator from '@/components/modals/space-creator-client'
@@ -17,9 +27,33 @@ interface SidebarClientProps {
 
 export default function SidebarClient({ spaces, selectedSpaceId, onSelectSpace }: SidebarClientProps) {
   const { data: session } = useSession()
+  const router = useRouter()
+  const { toast } = useToast()
   const [showProfileSettings, setShowProfileSettings] = useState(false)
   const [showSpaceCreator, setShowSpaceCreator] = useState(false)
   const [showJoinSpace, setShowJoinSpace] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true)
+      await signOut({ redirect: false })
+      router.push('/')
+      toast({
+        title: 'Logged out',
+        description: 'You have been successfully logged out.',
+      })
+    } catch (error) {
+      console.error('Logout error:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Logout failed',
+        description: 'Failed to log out. Please try again.',
+      })
+    } finally {
+      setIsLoggingOut(false)
+    }
+  }
 
   if (!session?.user) return null
 
@@ -37,36 +71,69 @@ export default function SidebarClient({ spaces, selectedSpaceId, onSelectSpace }
             <h1 className="text-xl font-bold text-foreground">Spaces</h1>
           </div>
 
-          {/* User Profile */}
-          <div className="flex items-center space-x-3 p-3 bg-muted rounded-lg mb-4">
-            {avatarData ? (
-              <EmojiAvatar 
-                emoji={avatarData.emoji}
-                backgroundColor={avatarData.backgroundColor}
-                size="medium"
-              />
-            ) : (
-              <div className="w-10 h-10 bg-muted-foreground rounded-full flex items-center justify-center">
-                <i className="fas fa-user text-background"></i>
-              </div>
-            )}
-            <div className="flex-1">
-              <p className="font-medium text-foreground" data-testid="user-display-name">
-                {user.displayName || user.name}
-              </p>
-              <p className="text-sm text-muted-foreground" data-testid="user-username">
-                @{user.username || 'user'}
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowProfileSettings(true)}
-              data-testid="button-edit-profile"
+          {/* User Profile Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex items-center space-x-3 p-3 bg-muted rounded-lg mb-4 w-full hover:bg-muted/80 transition-colors"
+                data-testid="user-profile-dropdown"
+              >
+                {avatarData ? (
+                  <EmojiAvatar 
+                    emoji={avatarData.emoji}
+                    backgroundColor={avatarData.backgroundColor}
+                    size="medium"
+                  />
+                ) : (
+                  <div className="w-10 h-10 bg-muted-foreground rounded-full flex items-center justify-center">
+                    <i className="fas fa-user text-background"></i>
+                  </div>
+                )}
+                <div className="flex-1 text-left">
+                  <p className="font-medium text-foreground" data-testid="user-display-name">
+                    {user.displayName || user.name}
+                  </p>
+                  <p className="text-sm text-muted-foreground" data-testid="user-username">
+                    @{user.username || 'user'}
+                  </p>
+                </div>
+                <i className="fas fa-chevron-down text-muted-foreground"></i>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent 
+              className="w-56"
+              align="start"
+              side="right"
+              sideOffset={8}
             >
-              <i className="fas fa-cog"></i>
-            </Button>
-          </div>
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              
+              <DropdownMenuItem
+                onClick={() => setShowProfileSettings(true)}
+                data-testid="menu-profile-settings"
+              >
+                <i className="fas fa-user-cog mr-2"></i>
+                Profile Settings
+              </DropdownMenuItem>
+              
+              <DropdownMenuSeparator />
+              
+              <DropdownMenuItem
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="text-destructive focus:text-destructive"
+                data-testid="menu-logout"
+              >
+                {isLoggingOut ? (
+                  <i className="fas fa-spinner fa-spin mr-2"></i>
+                ) : (
+                  <i className="fas fa-sign-out-alt mr-2"></i>
+                )}
+                {isLoggingOut ? 'Logging out...' : 'Log out'}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Spaces List */}
           <div className="space-y-2">
