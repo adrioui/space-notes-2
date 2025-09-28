@@ -8,6 +8,7 @@ A comprehensive collaborative learning platform with real-time messaging, note-t
 
 **📖 Full documentation is available in the [`@docs/`](./@docs/) directory:**
 
+- **⭐ [Technical Architecture Summary](./@docs/architecture/TECHNICAL_ARCHITECTURE_SUMMARY.md)** - Executive overview and design decisions
 - **🏗️ [System Architecture](./@docs/architecture/SYSTEM_ARCHITECTURE.md)** - Complete system design and architecture
 - **🔌 [API Reference](./@docs/api/API_REFERENCE.md)** - Comprehensive API documentation
 - **🔧 [Technical Fixes](./@docs/fixes/)** - Critical fixes and solutions implemented

@@ -9,7 +9,8 @@ Space Notes is a comprehensive collaborative learning platform that combines rea
 ## 📁 Documentation Structure
 
 ### 🏗️ **Architecture**
-- System architecture and design patterns
+- [`TECHNICAL_ARCHITECTURE_SUMMARY.md`](./architecture/TECHNICAL_ARCHITECTURE_SUMMARY.md) - **⭐ Executive technical overview and design decisions**
+- [`SYSTEM_ARCHITECTURE.md`](./architecture/SYSTEM_ARCHITECTURE.md) - Complete system design and architecture
 - Database schema and relationships
 - Component structure and organization
 
