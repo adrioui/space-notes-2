@@ -7,6 +7,10 @@ import { eq, and, desc, lt } from 'drizzle-orm'
 import { z } from 'zod'
 import { ServerRealtimeManager } from '@/lib/supabase-server'
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 async function isSpaceMember(spaceId: string, userId: string): Promise<boolean> {
   const result = await db
     .select()

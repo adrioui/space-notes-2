@@ -5,10 +5,22 @@ import { db } from '@/lib/db'
 import { users } from '@shared/schema'
 import { eq } from 'drizzle-orm'
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 export async function GET(request: NextRequest) {
   try {
+    // Ensure we're in a runtime environment (not build time)
+    if (typeof window !== 'undefined') {
+      return NextResponse.json(
+        { message: 'This endpoint is server-side only' },
+        { status: 400 }
+      )
+    }
+
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user?.id) {
       return NextResponse.json(
         { message: 'Not authenticated' },

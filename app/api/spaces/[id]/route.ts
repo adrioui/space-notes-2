@@ -4,6 +4,10 @@ import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { spaces, spaceMembers, users, insertSpaceSchema } from '@shared/schema'
 import { eq, and } from 'drizzle-orm'
+
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 import { z } from 'zod'
 
 const updateSpaceSchema = insertSpaceSchema.partial().omit({

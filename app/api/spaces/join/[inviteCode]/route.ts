@@ -5,6 +5,10 @@ import { db } from '@/lib/db'
 import { spaces, spaceMembers } from '@shared/schema'
 import { eq, and } from 'drizzle-orm'
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { inviteCode: string } }
