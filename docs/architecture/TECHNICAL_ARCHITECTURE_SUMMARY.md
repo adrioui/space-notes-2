@@ -5,7 +5,7 @@
 Space Notes is a collaborative learning platform designed with modern web architecture principles, emphasizing real-time collaboration, scalability, and developer experience. This document explains the key architectural decisions and technology choices that enable the platform's core functionality.
 
 **Live Platform**: https://space-notes-psi.vercel.app  
-**Complete Documentation**: [`@docs/`](../README.md)
+**Complete Documentation**: [`docs/`](../README.md)
 
 ---
 
