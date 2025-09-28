@@ -9,11 +9,15 @@
   },
   "regions": ["iad1"],
   "env": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "development",
+    "DISABLE_SES_LOCKDOWN": "true",
+    "NEXT_DISABLE_SES_LOCKDOWN": "true"
   },
   "build": {
     "env": {
-      "NODE_ENV": "production"
+      "NODE_ENV": "development",
+      "DISABLE_SES_LOCKDOWN": "true",
+      "NEXT_DISABLE_SES_LOCKDOWN": "true"
     }
   },
   "headers": [

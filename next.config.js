@@ -2,6 +2,14 @@
 const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['@neondatabase/serverless', 'drizzle-orm', '@supabase/supabase-js'],
+    // Disable SES lockdown for NextAuth compatibility
+    esmExternals: 'loose',
+  },
+
+  // Disable SES lockdown in Vercel environment
+  env: {
+    DISABLE_SES_LOCKDOWN: 'true',
+    NEXT_DISABLE_SES_LOCKDOWN: 'true',
   },
 
   // Headers configuration to handle CORS and fix cookie domain issues
