@@ -22,6 +22,10 @@
     "demo:seed": "tsx scripts/seed-demo-data.ts",
     "demo:cleanup": "tsx scripts/cleanup-demo-data.ts",
     "demo:validate": "tsx scripts/validate-demo-data.ts",
+    "demo:test": "node scripts/test-demo-accounts.js",
+    "demo:create-users": "npx tsx scripts/create-demo-users.ts",
+    "verify:deployment": "chmod +x scripts/verify-deployment.sh && ./scripts/verify-deployment.sh",
+    "fix:auth-imports": "chmod +x scripts/fix-auth-imports.sh && ./scripts/fix-auth-imports.sh",
     "lint": "next lint"
   },
   "dependencies": {
