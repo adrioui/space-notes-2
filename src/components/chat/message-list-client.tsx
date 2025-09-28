@@ -17,6 +17,7 @@ interface MessageListClientProps {
 export default function MessageListClient({ spaceId }: MessageListClientProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const queryClient = useQueryClient()
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
 
   // Track processed message IDs to prevent duplicates
   const processedMessageIds = useRef<Set<string>>(new Set())
@@ -32,17 +33,35 @@ export default function MessageListClient({ spaceId }: MessageListClientProps) {
     enabled: !!spaceId,
     refetchInterval: 60000, // Reduced polling frequency since we have real-time updates
     staleTime: 30000, // Consider data fresh for 30 seconds
+    // Ensure the query is reactive to cache updates
+    notifyOnChangeProps: ['data'],
   })
 
-  // Convert raw messages to OptimisticMessage format
-  const messages: OptimisticMessage[] = rawMessages.map((msg: any) => ({
-    ...msg,
-    _optimistic: {
-      deliveryState: 'confirmed' as const,
-      timestamp: new Date(msg.createdAt).getTime(),
-      realId: msg.id,
+  // Convert raw messages to OptimisticMessage format and ensure proper sorting
+  const messages: OptimisticMessage[] = OptimisticMessageUtils.sortMessages(
+    rawMessages.map((msg: any) => ({
+      ...msg,
+      _optimistic: {
+        deliveryState: 'confirmed' as const,
+        timestamp: new Date(msg.createdAt).getTime(),
+        realId: msg.id,
+      }
+    }))
+  )
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (shouldAutoScroll && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
     }
-  }))
+  }, [messages.length, shouldAutoScroll])
+
+  // Detect if user has scrolled up (to disable auto-scroll)
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100
+    setShouldAutoScroll(isNearBottom)
+  }, [])
 
   // Helper function to safely add message with deduplication and optimistic handling
   const addMessageToCache = useCallback((newMessage: any, source: string) => {
@@ -234,7 +253,7 @@ export default function MessageListClient({ spaceId }: MessageListClientProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" onScroll={handleScroll}>
       {messages.map((message) => {
         const avatarData = message.user.avatarData as { emoji: string; backgroundColor: string } | null
 

@@ -169,12 +169,14 @@ export class OptimisticMessageUtils {
   }
 
   /**
-   * Sort messages by timestamp (optimistic messages first, then by creation time)
+   * Sort messages by timestamp (oldest first, newest at bottom)
+   * This ensures chronological order with newest messages appearing at the bottom
    */
   static sortMessages(messages: OptimisticMessage[]): OptimisticMessage[] {
     return messages.sort((a, b) => {
       const aTime = a._optimistic?.timestamp || new Date(a.createdAt).getTime()
       const bTime = b._optimistic?.timestamp || new Date(b.createdAt).getTime()
+      // Keep ascending order (aTime - bTime) so newest messages appear at bottom
       return aTime - bTime
     })
   }

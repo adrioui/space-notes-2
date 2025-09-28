@@ -12,22 +12,36 @@ export function useOptimisticMessaging(spaceId: string) {
 
   // Helper function to update message delivery state
   const updateMessageState = useCallback((
-    tempId: string, 
+    tempId: string,
     state: 'sending' | 'sent' | 'failed' | 'confirmed',
     error?: string,
     realId?: string
   ) => {
+    console.log(`🔄 Updating message state: ${tempId} -> ${state}`, { error, realId })
+
     queryClient.setQueryData(
       ['/api/spaces', spaceId, 'messages'],
       (old: OptimisticMessage[] = []) => {
-        return old.map(msg => {
+        const updated = old.map(msg => {
           if (msg.id === tempId || msg._optimistic?.tempId === tempId) {
-            return OptimisticMessageUtils.updateDeliveryState(msg, state, error, realId)
+            const updatedMsg = OptimisticMessageUtils.updateDeliveryState(msg, state, error, realId)
+            console.log(`✅ Updated message ${tempId}:`, updatedMsg._optimistic?.deliveryState)
+            return updatedMsg
           }
           return msg
         })
+
+        // Ensure proper sorting after state update
+        return OptimisticMessageUtils.sortMessages(updated)
       }
     )
+
+    // Force re-render
+    queryClient.invalidateQueries({
+      queryKey: ['/api/spaces', spaceId, 'messages'],
+      exact: true,
+      refetchType: 'none'
+    })
   }, [queryClient, spaceId])
 
   // Helper function to remove optimistic message
@@ -52,19 +66,31 @@ export function useOptimisticMessaging(spaceId: string) {
       ['/api/spaces', spaceId, 'messages'],
       (old: OptimisticMessage[] = []) => {
         console.log('📋 Current messages in cache:', old.length)
+        console.log('📋 Existing message IDs:', old.map(m => m.id))
 
         // Remove any existing optimistic message with same temp ID (in case of retry)
         const filtered = old.filter(msg =>
           !OptimisticMessageUtils.isSameMessage(msg, optimisticMessage)
         )
 
+        console.log('🧹 After filtering duplicates:', filtered.length)
+
+        // Add new message and sort (newest at bottom)
         const newMessages = OptimisticMessageUtils.sortMessages([...filtered, optimisticMessage])
         console.log('📝 Updated messages count:', newMessages.length)
         console.log('🆕 New message added:', optimisticMessage.id, optimisticMessage.content)
+        console.log('📝 Final message IDs:', newMessages.map(m => m.id))
 
         return newMessages
       }
     )
+
+    // Force invalidate to ensure re-render
+    queryClient.invalidateQueries({
+      queryKey: ['/api/spaces', spaceId, 'messages'],
+      exact: true,
+      refetchType: 'none' // Don't refetch, just trigger re-render
+    })
 
     // Verify the cache was updated
     const updatedCache = queryClient.getQueryData(['/api/spaces', spaceId, 'messages'])
