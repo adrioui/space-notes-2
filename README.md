@@ -6,15 +6,15 @@ A comprehensive collaborative learning platform with real-time messaging, note-t
 
 ## 📚 Complete Documentation
 
-**📖 Full documentation is available in the [`@docs/`](./@docs/) directory:**
+**📖 Full documentation is available in the [`docs/`](./docs/) directory:**
 
-- **⭐ [Technical Architecture Summary](./@docs/architecture/TECHNICAL_ARCHITECTURE_SUMMARY.md)** - Executive overview and design decisions
-- **🏗️ [System Architecture](./@docs/architecture/SYSTEM_ARCHITECTURE.md)** - Complete system design and architecture
-- **🔌 [API Reference](./@docs/api/API_REFERENCE.md)** - Comprehensive API documentation
-- **🔧 [Technical Fixes](./@docs/fixes/)** - Critical fixes and solutions implemented
-- **✨ [Features](./@docs/features/)** - Core features and implementations
-- **📊 [Monitoring](./@docs/monitoring/)** - Health checks and monitoring systems
-- **🚀 [Deployment](./@docs/deployment/)** - Deployment guides and configuration
+- **⭐ [Technical Architecture Summary](./docs/architecture/TECHNICAL_ARCHITECTURE_SUMMARY.md)** - Executive overview and design decisions
+- **🏗️ [System Architecture](./docs/architecture/SYSTEM_ARCHITECTURE.md)** - Complete system design and architecture
+- **🔌 [API Reference](./docs/api/API_REFERENCE.md)** - Comprehensive API documentation
+- **🔧 [Technical Fixes](./docs/fixes/)** - Critical fixes and solutions implemented
+- **✨ [Features](./docs/features/)** - Core features and implementations
+- **📊 [Monitoring](./docs/monitoring/)** - Health checks and monitoring systems
+- **🚀 [Deployment](./docs/deployment/)** - Deployment guides and configuration
 
 ## 🎯 Quick Start
 

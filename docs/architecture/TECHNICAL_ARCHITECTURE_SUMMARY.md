@@ -117,7 +117,7 @@ lessonProgress (userId → users.id, lessonId → lessons.id, completed, progres
 - **Cascade deletes** properly handle space/user removal
 - **Indexed relationships** optimize query performance
 
-**Reference**: Complete schema documentation in [`@docs/architecture/SYSTEM_ARCHITECTURE.md`](./SYSTEM_ARCHITECTURE.md)
+**Reference**: Complete schema documentation in [`docs/architecture/SYSTEM_ARCHITECTURE.md`](./SYSTEM_ARCHITECTURE.md)
 
 ---
 
@@ -190,7 +190,7 @@ API Request → Session Validation → User Context → Resource Access
 4. Confirmation → State Reconciliation (Consistency)
 ```
 
-**Reference**: Complete API documentation in [`@docs/api/API_REFERENCE.md`](../api/API_REFERENCE.md)
+**Reference**: Complete API documentation in [`docs/api/API_REFERENCE.md`](../api/API_REFERENCE.md)
 
 ---
 
@@ -215,7 +215,7 @@ API Request → Session Validation → User Context → Resource Access
 - **Zero external dependencies** for demo functionality
 - **Maintainable separation** between demo and production logic
 
-**Reference**: Demo system documentation in [`@docs/features/`](../features/)
+**Reference**: Demo system documentation in [`docs/features/`](../features/)
 
 ### Optimistic Messaging Implementation
 
@@ -234,7 +234,7 @@ Message States: sending → sent → confirmed
                    failed → retry
 ```
 
-**Reference**: Optimistic messaging documentation in [`@docs/features/OPTIMISTIC_MESSAGING_FIX.md`](../features/OPTIMISTIC_MESSAGING_FIX.md)
+**Reference**: Optimistic messaging documentation in [`docs/features/OPTIMISTIC_MESSAGING_FIX.md`](../features/OPTIMISTIC_MESSAGING_FIX.md)
 
 ### Security and Scalability Considerations
 
@@ -258,7 +258,7 @@ Message States: sending → sent → confirmed
 - **Database indexing** on foreign keys and search fields
 - **Image optimization** through Next.js built-in features
 
-**Reference**: Complete technical fixes in [`@docs/fixes/`](../fixes/)
+**Reference**: Complete technical fixes in [`docs/fixes/`](../fixes/)
 
 ---
 
@@ -273,4 +273,4 @@ The Space Notes architecture balances modern development practices with practica
 
 This architecture enables rapid feature development while maintaining production-grade reliability and performance.
 
-**For detailed implementation specifics, refer to the comprehensive documentation in [`@docs/`](../README.md)**
+**For detailed implementation specifics, refer to the comprehensive documentation in [`docs/`](../README.md)**
