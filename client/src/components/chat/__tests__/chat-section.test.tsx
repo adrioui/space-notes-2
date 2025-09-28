@@ -22,9 +22,8 @@ describe('ChatSection Component', () => {
     expect(screen.getByText('No space selected')).toBeInTheDocument()
     expect(screen.getByText('Select a space to start chatting')).toBeInTheDocument()
     
-    // Should show chat icon
-    const chatIcon = screen.getByRole('generic').querySelector('.fas.fa-comments')
-    expect(chatIcon).toBeInTheDocument()
+    // Should show chat icon (test the icon class is present in the DOM)
+    expect(screen.getByText('No space selected').closest('div')).toContainHTML('fas fa-comments')
   })
 
   it('shows welcome state when spaceId is provided but space is undefined', () => {

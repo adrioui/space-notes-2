@@ -10,9 +10,8 @@ describe('NotesPanel Component', () => {
 
     expect(screen.getByText('Select a space to view notes')).toBeInTheDocument()
     
-    // Should show sticky note icon
-    const noteIcon = screen.getByRole('generic').querySelector('.fas.fa-sticky-note')
-    expect(noteIcon).toBeInTheDocument()
+    // Should show sticky note icon (test the icon class is present in the DOM)
+    expect(screen.getByText('Select a space to view notes').closest('div')).toContainHTML('fas fa-sticky-note')
   })
 
   it('renders notes interface when space is selected', () => {

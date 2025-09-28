@@ -10,9 +10,8 @@ describe('LessonsPanel Component', () => {
 
     expect(screen.getByText('Select a space to view lessons')).toBeInTheDocument()
     
-    // Should show graduation cap icon
-    const lessonIcon = screen.getByRole('generic').querySelector('.fas.fa-graduation-cap')
-    expect(lessonIcon).toBeInTheDocument()
+    // Should show graduation cap icon (test the icon class is present in the DOM)
+    expect(screen.getByText('Select a space to view lessons').closest('div')).toContainHTML('fas fa-graduation-cap')
   })
 
   it('renders lessons interface when space is selected', () => {
