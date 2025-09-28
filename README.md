@@ -1,6 +1,27 @@
-# Space Notes
+# 🚀 Space Notes
 
-A collaborative workspace application with real-time messaging, note-taking, and lesson management built with Next.js, Supabase, and TypeScript.
+A comprehensive collaborative learning platform with real-time messaging, note-taking, and lesson management built with Next.js, Supabase, and TypeScript.
+
+**🌐 Live Demo:** https://space-notes-psi.vercel.app
+
+## 📚 Complete Documentation
+
+**📖 Full documentation is available in the [`@docs/`](./@docs/) directory:**
+
+- **🏗️ [System Architecture](./@docs/architecture/SYSTEM_ARCHITECTURE.md)** - Complete system design and architecture
+- **🔌 [API Reference](./@docs/api/API_REFERENCE.md)** - Comprehensive API documentation
+- **🔧 [Technical Fixes](./@docs/fixes/)** - Critical fixes and solutions implemented
+- **✨ [Features](./@docs/features/)** - Core features and implementations
+- **📊 [Monitoring](./@docs/monitoring/)** - Health checks and monitoring systems
+- **🚀 [Deployment](./@docs/deployment/)** - Deployment guides and configuration
+
+## 🎯 Quick Start
+
+### **Demo Access (Instant Login)**
+- **Admin Demo**: `demo-admin@example.com`
+- **Member Demo**: `demo-member@example.com`
+
+*Both demo accounts feature auto-login - no OTP required!*
 
 ## ✨ Features
 
