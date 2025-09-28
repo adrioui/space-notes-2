@@ -1,6 +1,5 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { WebSocketServer } from "ws";
 import { storage } from "./storage";
 import { otpService } from "./otp-service";
 import { 
@@ -15,41 +14,6 @@ import {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
-  
-  // WebSocket server for real-time features - use different path to avoid Vite HMR conflict
-  const wss = new WebSocketServer({ 
-    server: httpServer,
-    path: '/ws' // Separate path for application WebSocket
-  });
-  const connections = new Map<string, Set<any>>();
-
-  wss.on('connection', (ws, req) => {
-    const url = new URL(req.url!, `http://${req.headers.host}`);
-    const spaceId = url.searchParams.get('spaceId');
-    
-    if (spaceId) {
-      if (!connections.has(spaceId)) {
-        connections.set(spaceId, new Set());
-      }
-      connections.get(spaceId)!.add(ws);
-      
-      ws.on('close', () => {
-        connections.get(spaceId)?.delete(ws);
-      });
-    }
-  });
-
-  function broadcastToSpace(spaceId: string, data: any) {
-    const spaceConnections = connections.get(spaceId);
-    if (spaceConnections) {
-      const message = JSON.stringify(data);
-      spaceConnections.forEach(ws => {
-        if (ws.readyState === 1) { // WebSocket.OPEN
-          ws.send(message);
-        }
-      });
-    }
-  }
 
   // Auth routes
   app.post("/api/auth/send-otp", async (req, res) => {
@@ -325,12 +289,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       
       const messageWithUser = { ...message, user };
-      
-      // Broadcast to all space members
-      broadcastToSpace(req.params.id, {
-        type: 'new_message',
-        data: messageWithUser
-      });
 
       res.json(messageWithUser);
     } catch (error: any) {
@@ -373,15 +331,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       
       const reactionWithUser = { ...reaction, user };
-      
-      // Get the message to find the space for broadcasting
-      const message = await storage.getMessage(req.params.id);
-      if (message) {
-        broadcastToSpace(message.spaceId, {
-          type: 'message_reaction_added',
-          data: reactionWithUser
-        });
-      }
 
       res.json(reactionWithUser);
     } catch (error: any) {
@@ -553,16 +502,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If publishing with notification, send system message
       if (req.body.status === "published" && req.body.notify) {
-        const systemMessage = await storage.createMessage({
+        await storage.createMessage({
           spaceId: note.spaceId,
           userId: userId,
           content: `📝 New note "${updatedNote.title}" published by ${note.author.displayName}`,
           messageType: "system"
-        });
-        
-        broadcastToSpace(note.spaceId, {
-          type: 'new_message',
-          data: { ...systemMessage, user: note.author }
         });
       }
 
@@ -640,16 +584,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If publishing with notification, send system message
       if (req.body.status === "published" && req.body.notify) {
-        const systemMessage = await storage.createMessage({
+        await storage.createMessage({
           spaceId: lesson.spaceId,
           userId: userId,
           content: `🎓 New lesson "${updatedLesson.title}" published by ${lesson.author.displayName}`,
           messageType: "system"
-        });
-        
-        broadcastToSpace(lesson.spaceId, {
-          type: 'new_message',
-          data: { ...systemMessage, user: lesson.author }
         });
       }
 

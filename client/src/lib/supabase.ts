@@ -1,6 +1,22 @@
-// This would normally contain Supabase client setup
-// For now, using fetch-based API calls to our Express backend
+import { createClient } from '@supabase/supabase-js';
 
+// Supabase client setup
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn('Supabase environment variables not found. Realtime features may not work.');
+}
+
+export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
+});
+
+// Legacy API calls to Express backend (keeping for now)
 export const API_BASE_URL = '/api';
 
 export async function apiCall(endpoint: string, options: RequestInit = {}) {
