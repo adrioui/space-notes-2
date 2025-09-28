@@ -68,6 +68,11 @@ export class NextOTPService {
     return demoEmails.includes(contact.toLowerCase());
   }
 
+  private isDemoModeEnabled(): boolean {
+    // Enable demo mode in development OR when explicitly enabled
+    return process.env.NODE_ENV === 'development' || process.env.ENABLE_DEMO_MODE === 'true';
+  }
+
   private isEmail(contact: string): boolean {
     return contact.includes('@');
   }
@@ -116,8 +121,8 @@ export class NextOTPService {
   }
 
   private async sendEmailOTP(email: string, code: string): Promise<{ success: boolean; message: string }> {
-    // In development mode, always use debug mode regardless of email configuration
-    if (process.env.NODE_ENV === 'development') {
+    // In development mode or demo mode, always use debug mode regardless of email configuration
+    if (this.isDemoModeEnabled()) {
       console.log(`[DEV MODE] Email OTP for ${email}: ${code}`);
 
       // Special message for demo accounts
@@ -171,8 +176,8 @@ export class NextOTPService {
   }
 
   private async sendSMSOTP(phone: string, code: string): Promise<{ success: boolean; message: string }> {
-    // In development mode, always use debug mode regardless of SMS configuration
-    if (process.env.NODE_ENV === 'development') {
+    // In development mode or demo mode, always use debug mode regardless of SMS configuration
+    if (this.isDemoModeEnabled()) {
       console.log(`[DEV MODE] SMS OTP for ${phone}: ${code}`);
 
       // Special handling for demo accounts (though demo accounts typically use email)
@@ -215,9 +220,9 @@ export class NextOTPService {
   }
 
   verifyOTP(contact: string, inputCode: string): { success: boolean; message: string; user?: any } {
-    // Demo account bypass - only in development mode
+    // Demo account bypass - when demo mode is enabled
     // This completely bypasses OTP verification for demo accounts to streamline testing
-    if (process.env.NODE_ENV === 'development' && this.isDemoAccount(contact)) {
+    if (this.isDemoModeEnabled() && this.isDemoAccount(contact)) {
       console.log(`[DEMO BYPASS] Automatically bypassing OTP verification for demo account: ${contact}`);
       console.log(`[DEMO BYPASS] Input code was: ${inputCode} (ignored for demo accounts)`);
 
