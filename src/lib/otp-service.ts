@@ -43,16 +43,39 @@ try {
 }
 
 export class NextOTPService {
+  private initialized = false;
+
   constructor() {
-    // Validate configuration in production
-    if (process.env.NODE_ENV === 'production') {
+    // Don't validate during construction to avoid build-time errors
+    // Validation will happen on first use
+  }
+
+  private validateConfiguration() {
+    if (this.initialized) return;
+
+    // Only validate in production environment and when not in build mode
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
+    const isVercel = process.env.VERCEL === '1';
+
+    // Skip validation during build time or if demo mode is enabled
+    if (isBuildTime || this.isDemoModeEnabled()) {
+      console.log('OTP Service: Skipping configuration validation (build time or demo mode)');
+      this.initialized = true;
+      return;
+    }
+
+    // Only validate in true production runtime (not Vercel with development NODE_ENV)
+    if (isProduction && !isVercel) {
       const hasEmailConfig = process.env.EMAIL_USER && process.env.EMAIL_PASS;
       const hasSMSConfig = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER;
-      
+
       if (!hasEmailConfig && !hasSMSConfig) {
         throw new Error('OTP service requires either email configuration (EMAIL_USER, EMAIL_PASS) or SMS configuration (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER) in production');
       }
     }
+
+    this.initialized = true;
   }
 
   private generateOTP(contact?: string): string {
@@ -70,7 +93,12 @@ export class NextOTPService {
 
   private isDemoModeEnabled(): boolean {
     // Enable demo mode in development OR when explicitly enabled
-    return process.env.NODE_ENV === 'development' || process.env.ENABLE_DEMO_MODE === 'true';
+    // Also enable if we're on Vercel with development NODE_ENV (for demo deployments)
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const isExplicitlyEnabled = process.env.ENABLE_DEMO_MODE === 'true';
+    const isVercelDemo = process.env.VERCEL === '1' && isDevelopment;
+
+    return isDevelopment || isExplicitlyEnabled || isVercelDemo;
   }
 
   private isEmail(contact: string): boolean {
@@ -84,6 +112,9 @@ export class NextOTPService {
 
   async sendOTP(contact: string): Promise<{ success: boolean; message: string; debugOTP?: string }> {
     try {
+      // Validate configuration on first use
+      this.validateConfiguration();
+
       // Validate contact format
       if (!this.isEmail(contact) && !this.isPhone(contact)) {
         return { success: false, message: "Invalid contact format. Use email or phone number with country code (e.g., +1234567890)" };
@@ -220,6 +251,9 @@ export class NextOTPService {
   }
 
   verifyOTP(contact: string, inputCode: string): { success: boolean; message: string; user?: any } {
+    // Validate configuration on first use
+    this.validateConfiguration();
+
     // Demo account bypass - when demo mode is enabled
     // This completely bypasses OTP verification for demo accounts to streamline testing
     if (this.isDemoModeEnabled() && this.isDemoAccount(contact)) {
@@ -298,10 +332,16 @@ export class NextOTPService {
   }
 }
 
+// Create service instance with build-safe initialization
 export const otpService = new NextOTPService();
 
-// Start cleanup timer when the service is imported
-if (typeof window === 'undefined') {
-  // Only run on server side
-  otpService.startCleanupTimer();
+// Start cleanup timer when the service is imported, but only in runtime (not build time)
+if (typeof window === 'undefined' && process.env.NEXT_PHASE !== 'phase-production-build') {
+  // Only run on server side and not during build
+  try {
+    otpService.startCleanupTimer();
+  } catch (error) {
+    // Silently fail during build time
+    console.log('OTP Service: Cleanup timer initialization deferred');
+  }
 }
