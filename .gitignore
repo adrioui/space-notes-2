@@ -136,3 +136,8 @@ test-*.js
 test-*.html
 debug-*.html
 performance-*.js
+
+# Docker
+.env.docker
+docker-compose.local.yml
+ssl/

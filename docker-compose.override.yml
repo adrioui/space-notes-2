@@ -1,0 +1,54 @@
+# Docker Compose Override File
+# This file is automatically loaded by docker-compose
+# Use it for local development customizations
+
+version: '3.8'
+
+services:
+  app:
+    # Override for development optimizations
+    environment:
+      # Enable development features
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
+      # Enable hot reloading
+      - WATCHPACK_POLLING=true
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      # Optimized volume mounts for better performance
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+      # Cache directories for better performance
+      - node_modules_cache:/app/node_modules
+      - next_cache:/app/.next
+    # Development-specific settings
+    stdin_open: true
+    tty: true
+    # Faster startup for development
+    command: ["npm", "run", "dev"]
+
+  # Optional: Add development tools
+  # Uncomment if you want additional development services
+
+  # adminer:
+  #   image: adminer
+  #   restart: always
+  #   ports:
+  #     - "8080:8080"
+  #   networks:
+  #     - space-notes-network
+  #   depends_on:
+  #     - db
+
+  # mailhog:
+  #   image: mailhog/mailhog
+  #   ports:
+  #     - "1025:1025"  # SMTP
+  #     - "8025:8025"  # Web UI
+  #   networks:
+  #     - space-notes-network
+
+volumes:
+  node_modules_cache:
+  next_cache:

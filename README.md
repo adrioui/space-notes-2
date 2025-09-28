@@ -57,6 +57,183 @@ A collaborative workspace application with real-time messaging, note-taking, and
 5. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
 
+## 🐳 Docker Setup
+
+Run the entire application stack with Docker - no need to install Node.js locally!
+
+### Prerequisites
+
+- Docker and Docker Compose installed
+- Supabase account (for database and real-time features)
+
+### Quick Start with Docker
+
+1. **Clone and setup environment**
+   ```bash
+   git clone https://github.com/your-username/space-notes.git
+   cd space-notes
+   cp .env.example .env.local
+   ```
+
+2. **Configure environment variables**
+   Edit `.env.local` with your Supabase credentials:
+   ```bash
+   # Required for Docker setup
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+   SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+   NEXTAUTH_SECRET=your-secret-key-here
+   ```
+
+3. **Start the application**
+   ```bash
+   # Development mode with hot reloading
+   docker-compose up
+
+   # Or run in background
+   docker-compose up -d
+   ```
+
+4. **Access the application**
+   - Application: [http://localhost:3000](http://localhost:3000)
+   - Database (if using local): [localhost:5432](localhost:5432)
+   - Redis (if enabled): [localhost:6379](localhost:6379)
+
+### Docker Commands
+
+```bash
+# Build and start all services
+docker-compose up --build
+
+# Start in background
+docker-compose up -d
+
+# View logs
+docker-compose logs -f app
+
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes (⚠️ deletes local database data)
+docker-compose down -v
+
+# Rebuild specific service
+docker-compose build app
+
+# Run commands in container
+docker-compose exec app npm run test
+docker-compose exec app npm run build
+```
+
+### Production Deployment with Docker
+
+```bash
+# Build production image
+docker build -t space-notes:latest .
+
+# Run production compose
+docker-compose -f docker-compose.prod.yml up -d
+
+# Or deploy to your container platform
+docker push your-registry/space-notes:latest
+```
+
+### Docker Configuration Options
+
+#### Using Local Database
+The default `docker-compose.yml` includes a PostgreSQL container. To use it:
+
+1. Set `DATABASE_URL=postgresql://postgres:password@db:5432/space_notes`
+2. The database will be automatically initialized
+
+#### Using Supabase (Recommended)
+For production or if you prefer Supabase:
+
+1. Keep your Supabase `DATABASE_URL`
+2. Comment out the `db` service in `docker-compose.yml`
+3. Remove `depends_on: - db` from the app service
+
+#### Environment Variables in Docker
+
+Create a `.env` file in the project root:
+```bash
+# Database (choose one)
+DATABASE_URL=postgresql://postgres:password@db:5432/space_notes  # Local
+# DATABASE_URL=postgresql://user:pass@host:5432/db                # Supabase
+
+# Supabase (required)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# NextAuth (required)
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret-key
+
+# Optional services
+EMAIL_FROM=noreply@yourdomain.com
+TWILIO_ACCOUNT_SID=your-twilio-sid
+```
+
+### Troubleshooting Docker Issues
+
+#### Common Problems
+
+**Port already in use:**
+```bash
+# Check what's using port 3000
+lsof -i :3000
+
+# Use different port
+docker-compose up --env PORT=3001
+```
+
+**Database connection issues:**
+```bash
+# Check database logs
+docker-compose logs db
+
+# Reset database
+docker-compose down -v
+docker-compose up db
+```
+
+**Build failures:**
+```bash
+# Clean build
+docker-compose build --no-cache app
+
+# Check build logs
+docker-compose build app --progress=plain
+```
+
+**Permission issues (Linux/macOS):**
+```bash
+# Fix file permissions
+sudo chown -R $USER:$USER .
+```
+
+#### Performance Optimization
+
+For better performance in development:
+
+```bash
+# Use bind mounts for faster file watching
+docker-compose -f docker-compose.yml -f docker-compose.override.yml up
+```
+
+#### Memory Issues
+
+If you encounter memory issues:
+
+```bash
+# Increase Docker memory limit (Docker Desktop)
+# Settings > Resources > Memory > 4GB+
+
+# Or limit container memory
+docker-compose up --memory=2g
+```
+
 ## 📚 Documentation
 
 Comprehensive documentation is available in the [`docs/`](./docs/) directory:
