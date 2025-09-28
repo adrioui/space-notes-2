@@ -2,10 +2,39 @@ import { ReactElement } from 'react'
 import { render, RenderOptions } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Router } from 'wouter'
+import { vi } from 'vitest'
 
-// Mock AuthProvider
+// Mock AuthProvider with useAuth context
+const mockAuthContext = {
+  user: {
+    id: 'test-user-id',
+    email: 'test@example.com',
+    phone: '+1234567890',
+    displayName: 'Test User',
+    username: 'testuser',
+    avatarData: { emoji: '👤', backgroundColor: '#3b82f6' },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  isLoading: false,
+  isAuthenticated: true,
+  logout: vi.fn(),
+  setUser: vi.fn()
+}
+
+// Create AuthContext
+import { createContext, useContext } from 'react'
+const AuthContext = createContext(mockAuthContext)
+
+// Mock useAuth hook
+export const useAuth = () => mockAuthContext
+
 const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  return <div data-testid="auth-provider">{children}</div>
+  return (
+    <AuthContext.Provider value={mockAuthContext}>
+      <div data-testid="auth-provider">{children}</div>
+    </AuthContext.Provider>
+  )
 }
 
 // Custom render function with providers
