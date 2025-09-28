@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import EmojiAvatar from '@/components/ui/emoji-avatar'
 import ProfileSettings from '@/components/modals/profile-settings-client'
 import SpaceCreator from '@/components/modals/space-creator-client'
+import JoinSpaceClient from '@/components/modals/join-space-client'
 import type { Space } from '@shared/schema'
 
 interface SidebarClientProps {
@@ -18,6 +19,7 @@ export default function SidebarClient({ spaces, selectedSpaceId, onSelectSpace }
   const { data: session } = useSession()
   const [showProfileSettings, setShowProfileSettings] = useState(false)
   const [showSpaceCreator, setShowSpaceCreator] = useState(false)
+  const [showJoinSpace, setShowJoinSpace] = useState(false)
 
   if (!session?.user) return null
 
@@ -72,27 +74,51 @@ export default function SidebarClient({ spaces, selectedSpaceId, onSelectSpace }
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                 Your Spaces
               </h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowSpaceCreator(true)}
-                data-testid="button-create-space"
-              >
-                <i className="fas fa-plus"></i>
-              </Button>
+              <div className="flex space-x-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowJoinSpace(true)}
+                  data-testid="button-join-space"
+                  title="Join space with invite code"
+                >
+                  <i className="fas fa-sign-in-alt"></i>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowSpaceCreator(true)}
+                  data-testid="button-create-space"
+                  title="Create new space"
+                >
+                  <i className="fas fa-plus"></i>
+                </Button>
+              </div>
             </div>
 
             {spaces.length === 0 ? (
               <div className="text-center py-8">
-                <i className="fas fa-rocket text-2xl text-muted-foreground mb-2"></i>
-                <p className="text-sm text-muted-foreground mb-2">No spaces yet</p>
-                <Button
-                  size="sm"
-                  onClick={() => setShowSpaceCreator(true)}
-                  data-testid="button-create-first-space"
-                >
-                  Create your first space
-                </Button>
+                <i className="fas fa-rocket text-2xl text-muted-foreground mb-4"></i>
+                <p className="text-sm text-muted-foreground mb-4">No spaces yet</p>
+                <div className="space-y-2">
+                  <Button
+                    size="sm"
+                    onClick={() => setShowSpaceCreator(true)}
+                    data-testid="button-create-first-space"
+                  >
+                    <i className="fas fa-plus mr-2"></i>
+                    Create your first space
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowJoinSpace(true)}
+                    data-testid="button-join-first-space"
+                  >
+                    <i className="fas fa-sign-in-alt mr-2"></i>
+                    Join with invite code
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="space-y-1">
@@ -142,6 +168,13 @@ export default function SidebarClient({ spaces, selectedSpaceId, onSelectSpace }
         <SpaceCreator
           isOpen={showSpaceCreator}
           onClose={() => setShowSpaceCreator(false)}
+        />
+      )}
+      
+      {showJoinSpace && (
+        <JoinSpaceClient
+          isOpen={showJoinSpace}
+          onClose={() => setShowJoinSpace(false)}
         />
       )}
     </>
