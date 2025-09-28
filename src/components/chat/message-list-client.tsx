@@ -1,8 +1,10 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
-import { useEffect, useRef } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useRef, useCallback } from 'react'
+import type { ReactNode } from 'react'
 import EmojiAvatar from '@/components/ui/emoji-avatar'
+import { useSpaceMessages } from '@/hooks/use-supabase'
 import type { Message, User } from '@shared/schema'
 
 interface MessageListClientProps {
@@ -11,12 +13,27 @@ interface MessageListClientProps {
 
 export default function MessageListClient({ spaceId }: MessageListClientProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const queryClient = useQueryClient()
 
   const { data: messages = [] } = useQuery<(Message & { user: User })[]>({
     queryKey: ['/api/spaces', spaceId, 'messages'],
     enabled: !!spaceId,
-    refetchInterval: 5000, // Polling until we implement realtime
+    refetchInterval: 30000, // Reduced polling as backup to realtime
   })
+
+  // Handle real-time message updates
+  const handleNewMessage = useCallback((payload: any) => {
+    console.log('Real-time message received:', payload)
+    // Invalidate and refetch messages when new message arrives
+    queryClient.invalidateQueries({ queryKey: ['/api/spaces', spaceId, 'messages'] })
+  }, [queryClient, spaceId])
+
+  const handleError = useCallback((error: any) => {
+    console.error('Supabase Realtime error:', error)
+  }, [])
+
+  // Subscribe to real-time messages for this space
+  useSpaceMessages(spaceId, handleNewMessage, handleError)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -66,7 +83,7 @@ export default function MessageListClient({ spaceId }: MessageListClientProps) {
                   {message.user.displayName}
                 </span>
                 <span className="text-xs text-muted-foreground" data-testid="message-time">
-                  {formatTime(message.createdAt)}
+                  {message.createdAt ? formatTime(message.createdAt) : ''}
                 </span>
               </div>
               
@@ -76,12 +93,12 @@ export default function MessageListClient({ spaceId }: MessageListClientProps) {
                 </p>
               )}
               
-              {message.messageType === 'image' && message.attachments && (
+              {message.messageType === 'image' && message.attachments && Array.isArray(message.attachments) && 
                 <div className="space-y-2">
                   {message.content && (
                     <p className="text-foreground break-words">{message.content}</p>
                   )}
-                  {(message.attachments as any[]).map((attachment, index) => (
+                  {message.attachments.map((attachment: any, index: number) => (
                     <img
                       key={index}
                       src={attachment.url}
@@ -91,7 +108,7 @@ export default function MessageListClient({ spaceId }: MessageListClientProps) {
                     />
                   ))}
                 </div>
-              )}
+              }
               
               {message.messageType === 'system' && (
                 <p className="text-muted-foreground italic text-sm">
