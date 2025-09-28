@@ -13,17 +13,17 @@ import CredentialsProvider from 'next-auth/providers/credentials'
  * - Regular accounts work with any 6-digit code
  */
 
-// Demo user data
+// Demo user data with proper UUIDs for database compatibility
 const DEMO_USERS = {
   'demo-admin@example.com': {
-    id: 'demo-admin-id',
+    id: '550e8400-e29b-41d4-a716-446655440001', // Fixed UUID for demo admin
     email: 'demo-admin@example.com',
     name: 'Demo Admin',
     role: 'admin',
     image: null,
   },
   'demo-member@example.com': {
-    id: 'demo-member-id',
+    id: '550e8400-e29b-41d4-a716-446655440002', // Fixed UUID for demo member
     email: 'demo-member@example.com',
     name: 'Demo Member',
     role: 'member',

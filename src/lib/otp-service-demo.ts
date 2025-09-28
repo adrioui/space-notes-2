@@ -118,13 +118,13 @@ export class DemoOTPService {
     // Demo account bypass - always succeeds
     if (this.isDemoAccount(contact)) {
       console.log(`🎭 DEMO BYPASS: Auto-approving OTP for demo account: ${contact}`);
-      
+
       const isAdmin = contact.toLowerCase() === 'demo-admin@example.com';
       return {
         success: true,
         message: "Demo account verified successfully!",
         user: {
-          id: isAdmin ? 'demo-admin-id' : 'demo-member-id',
+          id: isAdmin ? '550e8400-e29b-41d4-a716-446655440001' : '550e8400-e29b-41d4-a716-446655440002',
           email: contact,
           name: isAdmin ? 'Demo Admin' : 'Demo Member',
           role: isAdmin ? 'admin' : 'member'

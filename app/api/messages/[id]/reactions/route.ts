@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { authOptionsBypass } from '@/lib/auth-bypass'
 import { db } from '@/lib/db'
 import { messages, messageReactions, users, insertMessageReactionSchema } from '@shared/schema'
 import { eq, and } from 'drizzle-orm'
@@ -11,7 +11,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptionsBypass)
     
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -60,7 +60,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptionsBypass)
     
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -157,7 +157,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptionsBypass)
     
     if (!session?.user?.id) {
       return NextResponse.json(

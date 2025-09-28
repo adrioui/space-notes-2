@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { authOptionsBypass } from '@/lib/auth-bypass'
 import { db } from '@/lib/db'
 import { spaces, spaceMembers, lessons, users, insertLessonSchema } from '@shared/schema'
 import { eq, and, desc } from 'drizzle-orm'
@@ -24,7 +24,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptionsBypass)
     
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -88,7 +88,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptionsBypass)
     
     if (!session?.user?.id) {
       return NextResponse.json(
