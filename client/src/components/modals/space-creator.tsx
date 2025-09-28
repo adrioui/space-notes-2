@@ -53,7 +53,7 @@ export default function SpaceCreator({ isOpen, onClose }: SpaceCreatorProps) {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-    onSuccess: (newSpace) => {
+    onSuccess: (newSpace: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/spaces'] });
       toast({
         title: 'Space Created',
