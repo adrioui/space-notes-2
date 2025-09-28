@@ -85,8 +85,21 @@ export const handlers = [
   }),
 
   // Messages endpoints  
-  http.get('/api/spaces/:spaceId/messages', () => {
-    return HttpResponse.json([])
+  http.get('/api/spaces/:spaceId/messages', ({ params }) => {
+    if (params.spaceId === 'space-empty') {
+      return HttpResponse.json([])
+    }
+    return HttpResponse.json([
+      {
+        id: 'msg-1',
+        content: 'Hello everyone!',
+        userId: 'user-1',
+        spaceId: params.spaceId,
+        type: 'text',
+        createdAt: new Date().toISOString(),
+        user: mockUser
+      }
+    ])
   }),
 
   http.get('/api/spaces/:spaceId/members', () => {

@@ -154,7 +154,8 @@ describe('Dashboard Component', () => {
 
     render(<Dashboard />)
     
-    // Should show loading spinner (look for the actual element that's rendered)
-    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument()
+    // Should show loading spinner - check for the spinner element that actually exists
+    const spinnerElement = document.querySelector('.animate-spin')
+    expect(spinnerElement).toBeInTheDocument()
   })
 })
