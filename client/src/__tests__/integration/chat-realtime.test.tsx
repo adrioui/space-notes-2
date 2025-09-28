@@ -137,14 +137,20 @@ describe('Real-time Chat Integration', () => {
     const user = userEvent.setup()
     render(<RealtimeChat spaceId="space-1" />)
 
+    // Wait for initial messages to load
+    await waitFor(() => {
+      expect(screen.getByTestId('message-1')).toBeInTheDocument()
+    })
+
+    const messagesContainer = screen.getByTestId('messages-container')
+    const initialMessageCount = messagesContainer.children.length
     const sendButton = screen.getByTestId('button-send-message')
 
     // Try to send empty message
     await user.click(sendButton)
 
     // Should not add empty message
-    const messagesContainer = screen.getByTestId('messages-container')
-    const messageCount = messagesContainer.children.length
+    expect(messagesContainer.children.length).toBe(initialMessageCount)
     
     // Try again with just spaces
     const messageInput = screen.getByTestId('input-new-message')
@@ -152,6 +158,6 @@ describe('Real-time Chat Integration', () => {
     await user.click(sendButton)
 
     // Message count should remain the same
-    expect(messagesContainer.children.length).toBe(messageCount)
+    expect(messagesContainer.children.length).toBe(initialMessageCount)
   })
 })
