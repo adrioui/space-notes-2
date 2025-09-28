@@ -1,5 +1,5 @@
 // Server-side authentication utilities
-import { otpService } from './otp-service'
+import { otpService } from './otp-service-demo'
 
 // Initialize OTP cleanup timer
 otpService.startCleanupTimer()

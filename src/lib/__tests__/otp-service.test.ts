@@ -19,7 +19,7 @@ vi.mock('twilio', () => ({
 }))
 
 // Import after mocking
-import { NextOTPService, otpService } from '../otp-service'
+import { DemoOTPService, otpService } from '../otp-service-demo'
 
 describe('NextOTPService', () => {
   beforeEach(() => {

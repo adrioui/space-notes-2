@@ -1,6 +1,6 @@
 import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import { otpService } from './otp-service'
+import { otpService } from './otp-service-demo'
 
 // Simplified NextAuth configuration for Vercel compatibility
 export const authOptionsSimple: NextAuthOptions = {

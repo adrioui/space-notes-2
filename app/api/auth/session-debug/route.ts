@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptionsSimple } from '@/lib/auth-simple'
+import { authOptionsBypass } from '@/lib/auth-bypass'
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic'
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     console.log('Request headers:', Object.fromEntries(request.headers.entries()))
     
     // Try to get session
-    const session = await getServerSession(authOptionsSimple)
+    const session = await getServerSession(authOptionsBypass)
     console.log('Session result:', session)
     
     return NextResponse.json({

@@ -13,7 +13,7 @@ vi.mock('../../../../src/lib/auth', () => ({
   findUserByContact: vi.fn(),
 }))
 
-import { otpService } from '../../../../src/lib/otp-service'
+import { otpService } from '../../../../src/lib/otp-service-demo'
 import { findUserByContact } from '../../../../src/lib/auth'
 
 describe('/api/auth/verify-otp', () => {

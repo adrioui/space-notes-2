@@ -4,7 +4,7 @@ if (typeof globalThis !== 'undefined') {
 }
 
 import NextAuth from 'next-auth'
-import { authOptionsSimple } from '@/lib/auth-simple'
+import { authOptionsBypass } from '@/lib/auth-bypass'
 import { NextRequest, NextResponse } from 'next/server'
 
 // Force dynamic rendering for NextAuth routes
@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 // Create NextAuth handler with error wrapping
-const nextAuthHandler = NextAuth(authOptionsSimple)
+const nextAuthHandler = NextAuth(authOptionsBypass)
 
 // Wrap handlers with error catching for better debugging
 async function GET(request: NextRequest) {

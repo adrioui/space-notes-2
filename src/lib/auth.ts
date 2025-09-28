@@ -4,7 +4,7 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import { db } from './db'
 import { users } from '@shared/schema'
 import { eq, or } from 'drizzle-orm'
-import { otpService } from './otp-service'
+import { otpService } from './otp-service-demo'
 import { getNextAuthConfig, logAuthConfig } from './auth-config'
 
 // Log configuration on import (helps with debugging)

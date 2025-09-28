@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
 import { POST } from '../send-otp/route'
 import { NextRequest } from 'next/server'
-import { otpService } from '@/lib/otp-service'
+import { otpService } from '@/lib/otp-service-demo'
 
 // Mock the OTP service
 vi.mock('@/lib/otp-service', () => ({

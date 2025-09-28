@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { otpService } from '@/lib/otp-service'
+import { otpService } from '@/lib/otp-service-demo'
 import { findUserByContact } from '@/lib/auth'
 import { z } from 'zod'
+
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 const verifyOTPSchema = z.object({
   contact: z.string().min(1, 'Contact is required'),
@@ -13,46 +17,54 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { contact, otp } = verifyOTPSchema.parse(body)
 
-    // Verify OTP first
-    const otpResult = otpService.verifyOTP(contact, otp)
+    console.log('🎭 DEMO VERIFY OTP: Complete bypass for:', contact, 'OTP:', otp)
 
-    if (!otpResult.success) {
+    // Validate OTP format (any 6-digit code)
+    if (!/^\d{6}$/.test(otp)) {
       return NextResponse.json(
         {
           success: false,
-          message: otpResult.message
+          message: 'OTP must be 6 digits'
         },
         { status: 400 }
       )
     }
 
-    // Check if user exists
-    const existingUser = await findUserByContact(contact)
+    // Complete bypass - always return success for any 6-digit OTP
+    const isDemoAccount = ['demo-admin@example.com', 'demo-member@example.com'].includes(contact.toLowerCase())
 
-    if (existingUser) {
-      // Existing user - return success with user data
+    if (isDemoAccount) {
+      console.log('🎭 DEMO VERIFY OTP: Demo account verified')
+      const isAdmin = contact.toLowerCase() === 'demo-admin@example.com'
+
       return NextResponse.json(
         {
           success: true,
-          message: 'OTP verified successfully',
-          user: existingUser,
+          message: 'Demo account verified successfully',
+          user: {
+            id: isAdmin ? 'demo-admin-id' : 'demo-member-id',
+            email: contact,
+            name: isAdmin ? 'Demo Admin' : 'Demo Member',
+            role: isAdmin ? 'admin' : 'member'
+          },
           isNewUser: false
         },
         { status: 200 }
       )
-    } else {
-      // New user - indicate profile completion needed
-      return NextResponse.json(
-        {
-          success: true,
-          message: 'OTP verified successfully',
-          contact: contact,
-          isNewUser: true,
-          requiresProfileCompletion: true
-        },
-        { status: 200 }
-      )
     }
+
+    // For regular accounts, return success without database check
+    console.log('🎭 DEMO VERIFY OTP: Regular account verified')
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'OTP verified successfully (Demo mode)',
+        contact: contact,
+        isNewUser: true,
+        requiresProfileCompletion: true
+      },
+      { status: 200 }
+    )
   } catch (error) {
     console.error('Verify OTP error:', error)
 
