@@ -24,8 +24,13 @@ export default function MessageListClient({ spaceId }: MessageListClientProps) {
   // Handle real-time message updates
   const handleNewMessage = useCallback((payload: any) => {
     console.log('Real-time message received:', payload)
-    // Invalidate and refetch messages when new message arrives
-    queryClient.invalidateQueries({ queryKey: ['/api/spaces', spaceId, 'messages'] })
+    // Safely refetch messages when new message arrives, with debouncing
+    setTimeout(() => {
+      queryClient.refetchQueries({ 
+        queryKey: ['/api/spaces', spaceId, 'messages'],
+        exact: true
+      })
+    }, 100) // 100ms debounce to prevent excessive fetches
   }, [queryClient, spaceId])
 
   const handleError = useCallback((error: any) => {
@@ -98,7 +103,7 @@ export default function MessageListClient({ spaceId }: MessageListClientProps) {
                   {message.content && (
                     <p className="text-foreground break-words">{message.content}</p>
                   )}
-                  {message.attachments.map((attachment: any, index: number) => (
+                  {(message.attachments as any[]).map((attachment: any, index: number) => (
                     <img
                       key={index}
                       src={attachment.url}
