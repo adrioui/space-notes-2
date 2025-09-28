@@ -30,7 +30,30 @@ export default function ChatSectionClient({ spaceId, space }: ChatSectionClientP
     )
   }
 
-  const wallpaperClass = space.wallpaper === 'growth' ? 'wallpaper-growth' : ''
+  const getWallpaperStyle = () => {
+    switch (space.wallpaper) {
+      case 'growth':
+        return { className: 'wallpaper-growth' }
+      case 'geometric':
+        return { className: 'wallpaper-geometric' }
+      case 'nature':
+        return { className: 'wallpaper-nature' }
+      case 'custom':
+        return { 
+          className: '',
+          style: { 
+            backgroundImage: space.wallpaperUrl ? `url(${space.wallpaperUrl})` : undefined,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+          }
+        }
+      default:
+        return { className: '' }
+    }
+  }
+  
+  const wallpaperConfig = getWallpaperStyle()
 
   return (
     <div className="flex-1 flex flex-col">
@@ -62,7 +85,10 @@ export default function ChatSectionClient({ spaceId, space }: ChatSectionClientP
       </div>
 
       {/* Chat Messages */}
-      <div className={`flex-1 overflow-y-auto p-4 ${wallpaperClass}`}>
+      <div 
+        className={`flex-1 overflow-y-auto p-4 ${wallpaperConfig.className}`}
+        style={wallpaperConfig.style}
+      >
         <MessageList spaceId={spaceId} />
       </div>
 
