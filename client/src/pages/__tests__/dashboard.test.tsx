@@ -154,7 +154,7 @@ describe('Dashboard Component', () => {
 
     render(<Dashboard />)
     
-    // Should show loading spinner
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    // Should show loading spinner (look for the actual element that's rendered)
+    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument()
   })
 })

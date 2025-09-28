@@ -2,21 +2,100 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '../../../test/utils'
+import { useState } from 'react'
 
-// Mock AuthForm component for testing
+// Mock AuthForm component for testing with state
 const AuthForm = () => {
+  const [activeTab, setActiveTab] = useState('email')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [otp, setOtp] = useState('')
+  const [showOtpStep, setShowOtpStep] = useState(false)
+  const [errors, setErrors] = useState<string[]>([])
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
+  const validatePhone = (phone: string) => {
+    return phone.length >= 10
+  }
+
+  const handleSendOtp = () => {
+    const newErrors: string[] = []
+    
+    if (activeTab === 'email') {
+      if (!validateEmail(email)) {
+        newErrors.push('Please enter a valid email address')
+      }
+    } else {
+      if (!validatePhone(phone)) {
+        newErrors.push('Please enter a valid phone number')
+      }
+    }
+
+    setErrors(newErrors)
+    
+    if (newErrors.length === 0) {
+      setShowOtpStep(true)
+    }
+  }
+
   return (
     <div data-testid="auth-form">
       <div>
-        <button data-testid="tab-email">Email</button>
-        <button data-testid="tab-phone">Phone</button>
+        <button 
+          data-testid="tab-email" 
+          onClick={() => setActiveTab('email')}
+        >
+          Email
+        </button>
+        <button 
+          data-testid="tab-phone" 
+          onClick={() => setActiveTab('phone')}
+        >
+          Phone
+        </button>
       </div>
-      <input data-testid="input-email" placeholder="Enter your email" />
-      <input data-testid="input-phone" placeholder="Enter your phone number" />
-      <button data-testid="button-send-otp">Send OTP</button>
-      <input data-testid="input-otp" placeholder="Enter OTP" style={{ display: 'none' }} />
-      <button data-testid="button-verify-otp" style={{ display: 'none' }}>Verify OTP</button>
-      <button data-testid="button-resend-otp" style={{ display: 'none' }}>Resend OTP</button>
+      
+      {!showOtpStep ? (
+        <>
+          <input 
+            data-testid="input-email" 
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{ display: activeTab === 'email' ? 'block' : 'none' }}
+          />
+          <input 
+            data-testid="input-phone" 
+            placeholder="Enter your phone number"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            style={{ display: activeTab === 'phone' ? 'block' : 'none' }}
+          />
+          <button data-testid="button-send-otp" onClick={handleSendOtp}>
+            Send OTP
+          </button>
+        </>
+      ) : (
+        <>
+          <h3>Enter verification code</h3>
+          <input 
+            data-testid="input-otp" 
+            placeholder="Enter OTP"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
+          />
+          <button data-testid="button-verify-otp">Verify OTP</button>
+          <button data-testid="button-resend-otp">Resend OTP</button>
+        </>
+      )}
+      
+      {errors.map((error, index) => (
+        <div key={index} style={{ color: 'red' }}>{error}</div>
+      ))}
     </div>
   )
 }

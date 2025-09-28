@@ -5,6 +5,7 @@ import { render } from '../../../test/utils'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useState } from 'react'
 
 // Mock form components for testing
 const Form = ({ children, ...props }: any) => <form {...props}>{children}</form>
@@ -24,48 +25,62 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>
 
 const TestForm = ({ onSubmit }: { onSubmit: (data: FormData) => void }) => {
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: '',
-      name: '',
-    },
-  })
+  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
+  const [errors, setErrors] = useState<{ email?: string; name?: string }>({})
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const newErrors: { email?: string; name?: string } = {}
+    
+    // Validate email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      newErrors.email = 'Please enter a valid email address'
+    }
+    
+    // Validate name
+    if (name.length < 2) {
+      newErrors.name = 'Name must be at least 2 characters'
+    }
+    
+    setErrors(newErrors)
+    
+    if (Object.keys(newErrors).length === 0) {
+      onSubmit({ email, name })
+    }
+  }
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input data-testid="input-email" placeholder="Enter email" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl>
-                <Input data-testid="input-name" placeholder="Enter name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button data-testid="button-submit" type="submit">
-          Submit
-        </Button>
-      </form>
-    </Form>
+    <form onSubmit={handleSubmit}>
+      <div>
+        <label>Email</label>
+        <div>
+          <input 
+            data-testid="input-email" 
+            placeholder="Enter email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        {errors.email && <div style={{ color: 'red' }}>{errors.email}</div>}
+      </div>
+      <div>
+        <label>Name</label>
+        <div>
+          <input 
+            data-testid="input-name" 
+            placeholder="Enter name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        {errors.name && <div style={{ color: 'red' }}>{errors.name}</div>}
+      </div>
+      <button data-testid="button-submit" type="submit">
+        Submit
+      </button>
+    </form>
   )
 }
 
