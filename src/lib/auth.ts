@@ -5,34 +5,51 @@ import { db } from './db'
 import { users } from '@shared/schema'
 import { eq, or } from 'drizzle-orm'
 import { otpService } from './otp-service'
+import { getNextAuthConfig, logAuthConfig } from './auth-config'
+
+// Log configuration on import (helps with debugging)
+if (typeof window === 'undefined' && process.env.NODE_ENV === 'development') {
+  logAuthConfig()
+}
 
 export async function findUserByContact(contact: string) {
-  const isEmail = contact.includes('@')
+  try {
+    const isEmail = contact.includes('@')
 
-  if (isEmail) {
-    const result = await db.select().from(users).where(eq(users.email, contact)).limit(1)
-    return result[0] || null
-  } else {
-    const result = await db.select().from(users).where(eq(users.phone, contact)).limit(1)
-    return result[0] || null
+    if (isEmail) {
+      const result = await db.select().from(users).where(eq(users.email, contact)).limit(1)
+      return result[0] || null
+    } else {
+      const result = await db.select().from(users).where(eq(users.phone, contact)).limit(1)
+      return result[0] || null
+    }
+  } catch (error) {
+    console.error('Database error in findUserByContact:', error)
+    // In serverless environments, database errors should not crash the auth flow
+    return null
   }
 }
 
 export async function createUserFromContact(contact: string, profileData?: Partial<typeof users.$inferInsert>) {
-  const isEmail = contact.includes('@')
+  try {
+    const isEmail = contact.includes('@')
 
-  const userData = {
-    email: isEmail ? contact : null,
-    phone: !isEmail ? contact : null,
-    displayName: profileData?.displayName || (isEmail ? contact.split('@')[0] : contact),
-    username: profileData?.username || (isEmail ? contact.split('@')[0] + '_' + Date.now() : 'user_' + Date.now()),
-    avatarType: (profileData?.avatarType as any) || 'emoji' as const,
-    avatarData: profileData?.avatarData || { emoji: '👤', backgroundColor: '#6B73FF' },
-    ...profileData,
+    const userData = {
+      email: isEmail ? contact : null,
+      phone: !isEmail ? contact : null,
+      displayName: profileData?.displayName || (isEmail ? contact.split('@')[0] : contact),
+      username: profileData?.username || (isEmail ? contact.split('@')[0] + '_' + Date.now() : 'user_' + Date.now()),
+      avatarType: (profileData?.avatarType as any) || 'emoji' as const,
+      avatarData: profileData?.avatarData || { emoji: '👤', backgroundColor: '#6B73FF' },
+      ...profileData,
+    }
+
+    const newUsers = await db.insert(users).values(userData).returning()
+    return newUsers[0]
+  } catch (error) {
+    console.error('Database error in createUserFromContact:', error)
+    throw new Error('Failed to create user account')
   }
-
-  const newUsers = await db.insert(users).values(userData).returning()
-  return newUsers[0]
 }
 
 async function findOrCreateUser(contact: string) {
@@ -45,8 +62,13 @@ async function findOrCreateUser(contact: string) {
   return await createUserFromContact(contact)
 }
 
+// Get configuration for current environment
+const authConfig = getNextAuthConfig()
+
 export const authOptions: NextAuthOptions = {
-  adapter: DrizzleAdapter(db),
+  // Use JWT strategy for better Vercel compatibility
+  // Database adapter can cause issues with serverless functions
+  ...(authConfig.isServerless ? {} : { adapter: DrizzleAdapter(db) }),
   providers: [
     CredentialsProvider({
       id: 'otp',
@@ -111,7 +133,16 @@ export const authOptions: NextAuthOptions = {
   ],
   session: {
     strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  secret: authConfig.secret,
+  debug: authConfig.debug,
+  // Ensure proper URL configuration for Vercel
+  ...(authConfig.baseUrl && {
+    url: authConfig.baseUrl,
+    // Add redirect and callback URLs for better Vercel compatibility
+    redirectProxyUrl: authConfig.baseUrl,
+  }),
   callbacks: {
     jwt: async ({ token, user }) => {
       if (user) {
@@ -128,5 +159,27 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: '/',
+    error: '/', // Redirect errors to home page
+  },
+  events: {
+    async signIn(message) {
+      console.log('NextAuth signIn event:', message.user?.email || message.user?.id)
+    },
+    async signOut(message) {
+      console.log('NextAuth signOut event:', message.session?.user?.email || 'unknown')
+    },
+  },
+  logger: {
+    error(code, metadata) {
+      console.error('NextAuth Error:', code, metadata)
+    },
+    warn(code) {
+      console.warn('NextAuth Warning:', code)
+    },
+    debug(code, metadata) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('NextAuth Debug:', code, metadata)
+      }
+    },
   },
 }
