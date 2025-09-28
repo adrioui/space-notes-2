@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { useToast } from '@/hooks/use-toast'
-import { apiCall } from '@/lib/supabase'
 
 const joinSpaceSchema = z.object({
   inviteCode: z.string()
@@ -38,9 +37,18 @@ export default function JoinSpaceClient({ isOpen, onClose }: JoinSpaceClientProp
 
   const joinSpaceMutation = useMutation({
     mutationFn: async (data: JoinSpaceForm) => {
-      return apiCall(`/spaces/join/${data.inviteCode}`, {
+      const response = await fetch(`/api/spaces/join/${data.inviteCode}`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
       })
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: 'Failed to join space' }))
+        throw new Error(error.message || 'Failed to join space')
+      }
+      
+      return response.json()
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/spaces'] })
