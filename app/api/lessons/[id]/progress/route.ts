@@ -93,11 +93,8 @@ export async function GET(
 }
 
 const createProgressSchema = insertLessonProgressSchema.omit({
-  id: true,
   lessonId: true,
   userId: true,
-  createdAt: true,
-  updatedAt: true,
 })
 
 export async function POST(
@@ -159,8 +156,7 @@ export async function POST(
         .update(lessonProgress)
         .set({
           ...progressData,
-          lastAccessedAt: new Date(),
-          updatedAt: new Date(),
+          completedAt: progressData.completed ? new Date() : null,
         })
         .where(and(
           eq(lessonProgress.lessonId, params.id),
@@ -175,7 +171,7 @@ export async function POST(
           ...progressData,
           lessonId: params.id,
           userId: session.user.id,
-          lastAccessedAt: new Date(),
+          completedAt: progressData.completed ? new Date() : null,
         })
         .returning()
     }

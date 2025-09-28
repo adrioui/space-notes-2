@@ -14,13 +14,17 @@ export async function POST(request: NextRequest) {
     const result = await otpService.sendOTP(contact)
 
     if (result.success) {
-      return NextResponse.json(
-        { 
-          success: true, 
-          message: result.message 
-        },
-        { status: 200 }
-      )
+      // In development mode, include the OTP code for debugging
+      const responseData: any = {
+        success: true,
+        message: result.message
+      }
+
+      if (process.env.NODE_ENV === 'development' && result.debugOTP) {
+        responseData.debugOTP = result.debugOTP
+      }
+
+      return NextResponse.json(responseData, { status: 200 })
     } else {
       return NextResponse.json(
         { 

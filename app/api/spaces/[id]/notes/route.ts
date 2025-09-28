@@ -78,12 +78,8 @@ export async function GET(
 }
 
 const createNoteSchema = insertNoteSchema.omit({
-  id: true,
   spaceId: true,
   authorId: true,
-  publishedAt: true,
-  createdAt: true,
-  updatedAt: true,
 })
 
 export async function POST(

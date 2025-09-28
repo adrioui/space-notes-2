@@ -29,6 +29,7 @@ export default function OTPFormClient() {
   const [step, setStep] = useState<'contact' | 'otp' | 'profile'>('contact')
   const [contact, setContact] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [debugOTP, setDebugOTP] = useState<string | null>(null)
   const { toast } = useToast()
   const router = useRouter()
 
@@ -56,12 +57,20 @@ export default function OTPFormClient() {
       if (!response.ok) {
         throw new Error(result.message || 'Failed to send OTP')
       }
-      
+
       setContact(data.contact)
       setStep('otp')
+
+      // Store debug OTP if provided (development mode only)
+      if (result.debugOTP) {
+        setDebugOTP(result.debugOTP)
+      }
+
       toast({
         title: 'OTP Sent',
-        description: 'Please check your email or phone for the verification code.',
+        description: result.debugOTP
+          ? `OTP sent! Development mode - your code is: ${result.debugOTP}`
+          : 'Please check your email or phone for the verification code.',
       })
     } catch (error: any) {
       toast({
@@ -77,8 +86,8 @@ export default function OTPFormClient() {
   const handleVerifyOTP = async (data: OTPForm) => {
     setIsLoading(true)
     try {
-      // Use NextAuth signIn with credentials
-      const result = await signIn('credentials', {
+      // Use NextAuth signIn with OTP provider
+      const result = await signIn('otp', {
         contact,
         otp: data.otp,
         redirect: false,
@@ -182,19 +191,50 @@ export default function OTPFormClient() {
                     </FormItem>
                   )}
                 />
-                <Button 
-                  type="submit" 
-                  className="w-full" 
+
+                {/* Development Mode Debug Panel */}
+                {process.env.NODE_ENV === 'development' && debugOTP && (
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <div className="text-yellow-800 font-medium">🔧 Development Mode</div>
+                    </div>
+                    <div className="mt-2 text-sm text-yellow-700">
+                      <strong>Debug OTP:</strong>
+                      <span className="ml-2 font-mono text-lg font-bold text-yellow-900 bg-yellow-100 px-2 py-1 rounded">
+                        {debugOTP}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-yellow-600">
+                      This debug panel only appears in development mode
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-2 text-xs"
+                      onClick={() => otpForm.setValue('otp', debugOTP)}
+                    >
+                      Auto-fill OTP
+                    </Button>
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  className="w-full"
                   disabled={isLoading}
                   data-testid="button-verify-otp"
                 >
                   {isLoading ? 'Verifying...' : 'Verify Code'}
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  className="w-full" 
-                  onClick={() => setStep('contact')}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => {
+                    setStep('contact')
+                    setDebugOTP(null)
+                  }}
                   disabled={isLoading}
                   data-testid="button-back"
                 >

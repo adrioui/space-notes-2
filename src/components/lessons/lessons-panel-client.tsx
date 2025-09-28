@@ -107,7 +107,7 @@ export default function LessonsPanelClient({ spaceId }: LessonsPanelClientProps)
                         Published
                       </span>
                     )}
-                    <span>{formatDate(lesson.updatedAt)}</span>
+                    <span>{lesson.updatedAt ? formatDate(lesson.updatedAt) : 'No date'}</span>
                   </div>
                 </div>
                 
@@ -119,7 +119,7 @@ export default function LessonsPanelClient({ spaceId }: LessonsPanelClientProps)
                 
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>by {lesson.author.displayName}</span>
-                  <span>{getTopicsCount(lesson.topics)} topics</span>
+                  <span>{getTopicsCount(lesson.topics as any[])} topics</span>
                 </div>
               </div>
             ))}

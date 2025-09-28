@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { useToast } from '@/hooks/use-toast'
+import ErrorBoundary from '@/components/error-boundary'
 
 const spaceSchema = z.object({
   name: z.string().min(1, 'Space name is required'),
@@ -54,12 +55,32 @@ export default function SpaceCreatorClient({ isOpen, onClose }: SpaceCreatorClie
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       })
-      
+
       if (!response.ok) {
-        throw new Error('Failed to create space')
+        const errorData = await response.json().catch(() => ({}))
+
+        // Handle specific error cases
+        if (response.status === 401) {
+          throw new Error('Please log in again to create a space')
+        }
+
+        if (response.status === 409) {
+          throw new Error('A space with this name already exists')
+        }
+
+        const errorMessage = errorData.message || `Failed to create space (${response.status})`
+        throw new Error(errorMessage)
       }
-      
+
       return response.json()
+    },
+    retry: (failureCount, error) => {
+      // Don't retry on authentication or validation errors
+      if (error.message.includes('log in again') || error.message.includes('already exists')) {
+        return false
+      }
+      // Retry up to 2 times for other errors
+      return failureCount < 2
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/spaces'] })
@@ -71,10 +92,11 @@ export default function SpaceCreatorClient({ isOpen, onClose }: SpaceCreatorClie
       onClose()
     },
     onError: (error: Error) => {
+      console.error('Space creation error:', error)
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: error.message,
+        title: 'Failed to Create Space',
+        description: error.message || 'An unexpected error occurred. Please try again.',
       })
     },
   })
@@ -90,8 +112,9 @@ export default function SpaceCreatorClient({ isOpen, onClose }: SpaceCreatorClie
           <DialogTitle>Create New Space</DialogTitle>
         </DialogHeader>
         
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        <ErrorBoundary>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
             {/* Emoji Selection */}
             <FormField
               control={form.control}
@@ -208,8 +231,9 @@ export default function SpaceCreatorClient({ isOpen, onClose }: SpaceCreatorClie
                 {createSpaceMutation.isPending ? 'Creating...' : 'Create Space'}
               </Button>
             </div>
-          </form>
-        </Form>
+            </form>
+          </Form>
+        </ErrorBoundary>
       </DialogContent>
     </Dialog>
   )

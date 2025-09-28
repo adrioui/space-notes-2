@@ -6,11 +6,7 @@ import { users, insertUserSchema } from '@shared/schema'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
-const updateUserSchema = insertUserSchema.partial().omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-})
+const updateUserSchema = insertUserSchema.partial()
 
 export async function GET(
   request: NextRequest,

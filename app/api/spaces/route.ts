@@ -13,7 +13,10 @@ export async function GET(request: NextRequest) {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { message: 'Not authenticated' },
+        {
+          message: 'Authentication required',
+          code: 'UNAUTHENTICATED'
+        },
         { status: 401 }
       )
     }
@@ -49,11 +52,7 @@ export async function GET(request: NextRequest) {
 }
 
 const createSpaceSchema = insertSpaceSchema.omit({
-  id: true,
   createdBy: true,
-  createdAt: true,
-  updatedAt: true,
-  inviteCode: true,
 })
 
 export async function POST(request: NextRequest) {
@@ -62,7 +61,10 @@ export async function POST(request: NextRequest) {
     
     if (!session?.user?.id) {
       return NextResponse.json(
-        { message: 'Not authenticated' },
+        {
+          message: 'Authentication required',
+          code: 'UNAUTHENTICATED'
+        },
         { status: 401 }
       )
     }
@@ -95,19 +97,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newSpace, { status: 201 })
   } catch (error) {
     console.error('Create space error:', error)
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { 
+        {
           message: 'Invalid request data',
-          errors: error.errors 
+          errors: error.errors,
+          details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
         },
         { status: 400 }
       )
     }
 
+    // Handle database constraint errors
+    if (error && typeof error === 'object' && 'code' in error) {
+      if (error.code === '23505') { // Unique constraint violation
+        return NextResponse.json(
+          { message: 'A space with this name already exists' },
+          { status: 409 }
+        )
+      }
+    }
+
     return NextResponse.json(
-      { message: 'Internal server error' },
+      { message: 'Failed to create space. Please try again.' },
       { status: 500 }
     )
   }

@@ -83,7 +83,7 @@ export default function MembersDialogClient({ spaceId, children }: MembersDialog
                     @{member.user.username}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Joined {formatJoinDate(member.joinedAt)}
+                    Joined {member.joinedAt ? formatJoinDate(member.joinedAt) : 'Unknown'}
                   </p>
                 </div>
               </div>

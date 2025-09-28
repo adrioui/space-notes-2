@@ -7,11 +7,7 @@ import { eq, and } from 'drizzle-orm'
 import { z } from 'zod'
 
 const updateSpaceSchema = insertSpaceSchema.partial().omit({
-  id: true,
   createdBy: true,
-  createdAt: true,
-  updatedAt: true,
-  inviteCode: true,
 })
 
 async function isSpaceMember(spaceId: string, userId: string): Promise<boolean> {

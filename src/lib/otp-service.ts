@@ -23,8 +23,10 @@ try {
 
 // Initialize email transporter (will be undefined if credentials not provided)
 let emailTransporter: nodemailer.Transporter | undefined;
+let emailConfigured = false;
+
 try {
-  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASS && process.env.NODE_ENV === 'production') {
     emailTransporter = nodemailer.createTransport({
       service: 'gmail', // You can change this to other email services
       auth: {
@@ -32,6 +34,9 @@ try {
         pass: process.env.EMAIL_PASS, // Use app password for Gmail
       },
     });
+    emailConfigured = true;
+  } else if (process.env.NODE_ENV === 'development') {
+    console.log('Development mode: Email service disabled, using debug mode');
   }
 } catch (error) {
   console.log('Email not configured - Email OTP will not work');
@@ -50,8 +55,17 @@ export class NextOTPService {
     }
   }
 
-  private generateOTP(): string {
+  private generateOTP(contact?: string): string {
+    // For demo accounts, use predictable OTPs for easier testing
+    if (contact && this.isDemoAccount(contact)) {
+      return '123456'; // Predictable OTP for demo accounts
+    }
     return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  private isDemoAccount(contact: string): boolean {
+    const demoEmails = ['demo-admin@example.com', 'demo-member@example.com'];
+    return demoEmails.includes(contact.toLowerCase());
   }
 
   private isEmail(contact: string): boolean {
@@ -63,7 +77,7 @@ export class NextOTPService {
     return /^\+\d{10,15}$/.test(contact);
   }
 
-  async sendOTP(contact: string): Promise<{ success: boolean; message: string }> {
+  async sendOTP(contact: string): Promise<{ success: boolean; message: string; debugOTP?: string }> {
     try {
       // Validate contact format
       if (!this.isEmail(contact) && !this.isPhone(contact)) {
@@ -71,7 +85,7 @@ export class NextOTPService {
       }
 
       // Generate and store OTP
-      const code = this.generateOTP();
+      const code = this.generateOTP(contact);
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
       
       otpStorage.set(contact, {
@@ -82,11 +96,19 @@ export class NextOTPService {
       });
 
       // Send OTP based on contact type
+      let result;
       if (this.isEmail(contact)) {
-        return await this.sendEmailOTP(contact, code);
+        result = await this.sendEmailOTP(contact, code);
       } else {
-        return await this.sendSMSOTP(contact, code);
+        result = await this.sendSMSOTP(contact, code);
       }
+
+      // In development mode, include the OTP code for debugging
+      if (process.env.NODE_ENV === 'development' && result.success) {
+        return { ...result, debugOTP: code };
+      }
+
+      return result;
     } catch (error: any) {
       console.error('Error sending OTP:', error);
       return { success: false, message: "Failed to send OTP" };
@@ -94,19 +116,30 @@ export class NextOTPService {
   }
 
   private async sendEmailOTP(email: string, code: string): Promise<{ success: boolean; message: string }> {
-    if (!emailTransporter) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[DEV MODE] Email OTP for ${email}: ${code}`);
-        return { 
-          success: true, 
-          message: "OTP sent successfully (check console for development mode code)" 
-        };
-      } else {
-        return { 
-          success: false, 
-          message: "Email service not configured. Please contact administrator." 
+    // In development mode, always use debug mode regardless of email configuration
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DEV MODE] Email OTP for ${email}: ${code}`);
+
+      // Special message for demo accounts
+      if (this.isDemoAccount(email)) {
+        console.log(`[DEMO BYPASS] Demo account detected: ${email} - OTP verification will be automatically bypassed`);
+        return {
+          success: true,
+          message: "Demo OTP sent! Note: OTP verification will be automatically bypassed for demo accounts in development mode."
         };
       }
+
+      return {
+        success: true,
+        message: "OTP sent successfully (check console for development mode code)"
+      };
+    }
+
+    if (!emailTransporter || !emailConfigured) {
+      return {
+        success: false,
+        message: "Email service not configured. Please contact administrator."
+      };
     }
 
     try {
@@ -138,19 +171,30 @@ export class NextOTPService {
   }
 
   private async sendSMSOTP(phone: string, code: string): Promise<{ success: boolean; message: string }> {
-    if (!twilioClient || !process.env.TWILIO_PHONE_NUMBER) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[DEV MODE] SMS OTP for ${phone}: ${code}`);
-        return { 
-          success: true, 
-          message: "OTP sent successfully (check console for development mode code)" 
-        };
-      } else {
-        return { 
-          success: false, 
-          message: "SMS service not configured. Please contact administrator." 
+    // In development mode, always use debug mode regardless of SMS configuration
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DEV MODE] SMS OTP for ${phone}: ${code}`);
+
+      // Special handling for demo accounts (though demo accounts typically use email)
+      if (this.isDemoAccount(phone)) {
+        console.log(`[DEMO BYPASS] Demo account detected: ${phone} - OTP verification will be automatically bypassed`);
+        return {
+          success: true,
+          message: "Demo OTP sent! Note: OTP verification will be automatically bypassed for demo accounts in development mode."
         };
       }
+
+      return {
+        success: true,
+        message: "OTP sent successfully (check console for development mode code)"
+      };
+    }
+
+    if (!twilioClient || !process.env.TWILIO_PHONE_NUMBER) {
+      return {
+        success: false,
+        message: "SMS service not configured. Please contact administrator."
+      };
     }
 
     try {
@@ -171,8 +215,32 @@ export class NextOTPService {
   }
 
   verifyOTP(contact: string, inputCode: string): { success: boolean; message: string; user?: any } {
+    // Demo account bypass - only in development mode
+    // This completely bypasses OTP verification for demo accounts to streamline testing
+    if (process.env.NODE_ENV === 'development' && this.isDemoAccount(contact)) {
+      console.log(`[DEMO BYPASS] Automatically bypassing OTP verification for demo account: ${contact}`);
+      console.log(`[DEMO BYPASS] Input code was: ${inputCode} (ignored for demo accounts)`);
+
+      // Clean up any existing OTP data for the demo account
+      otpStorage.delete(contact);
+
+      // Return successful verification response immediately
+      const isEmail = this.isEmail(contact);
+      return {
+        success: true,
+        message: "Demo account verified successfully (OTP bypass active in development)",
+        user: {
+          id: contact, // Temporary ID, will be replaced when user is created/found
+          email: isEmail ? contact : null,
+          phone: !isEmail ? contact : null,
+          contact: contact
+        }
+      };
+    }
+
+    // Regular OTP verification for non-demo accounts and production environments
     const otpData = otpStorage.get(contact);
-    
+
     if (!otpData) {
       return { success: false, message: "No OTP found for this contact. Please request a new one." };
     }
@@ -197,11 +265,11 @@ export class NextOTPService {
 
     // Success - clean up
     otpStorage.delete(contact);
-    
+
     // Return user data for NextAuth
     const isEmail = this.isEmail(contact);
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: "OTP verified successfully",
       user: {
         id: contact, // Temporary ID, will be replaced when user is created/found
@@ -226,3 +294,9 @@ export class NextOTPService {
 }
 
 export const otpService = new NextOTPService();
+
+// Start cleanup timer when the service is imported
+if (typeof window === 'undefined') {
+  // Only run on server side
+  otpService.startCleanupTimer();
+}

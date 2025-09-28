@@ -115,17 +115,17 @@ export default function NotesPanelClient({ spaceId }: NotesPanelClientProps) {
                         Published
                       </span>
                     )}
-                    <span>{formatDate(note.updatedAt)}</span>
+                    <span>{note.updatedAt ? formatDate(note.updatedAt) : 'No date'}</span>
                   </div>
                 </div>
                 
                 <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
-                  {getBlocksPreview(note.blocks)}
+                  {getBlocksPreview(note.blocks as any[])}
                 </p>
                 
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>by {note.author.displayName}</span>
-                  <span>{getBlockCount(note.blocks)} blocks</span>
+                  <span>{getBlockCount(note.blocks as any[])} blocks</span>
                 </div>
               </div>
             ))}

@@ -7,11 +7,12 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./client/src/test/setup.ts'],
+    setupFiles: ['./src/test/setup.ts'],
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'client', 'src'),
+      // Match tsconfig.json paths exactly
+      '@': path.resolve(__dirname, 'src'),
       '@shared': path.resolve(__dirname, 'shared'),
     },
   },

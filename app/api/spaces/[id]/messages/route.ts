@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { spaces, spaceMembers, messages, users, insertMessageSchema } from '@shared/schema'
 import { eq, and, desc, lt } from 'drizzle-orm'
 import { z } from 'zod'
+import { ServerRealtimeManager } from '@/lib/supabase-server'
 
 async function isSpaceMember(spaceId: string, userId: string): Promise<boolean> {
   const result = await db
@@ -48,7 +49,14 @@ export async function GET(
     const before = searchParams.get('before')
 
     // Build query with optional before cursor for pagination
-    let query = db
+    const whereConditions = [eq(messages.spaceId, params.id)]
+
+    // Add before cursor if provided for pagination
+    if (before) {
+      whereConditions.push(lt(messages.createdAt, new Date(before)))
+    }
+
+    const spaceMessages = await db
       .select({
         id: messages.id,
         spaceId: messages.spaceId,
@@ -68,17 +76,7 @@ export async function GET(
       })
       .from(messages)
       .innerJoin(users, eq(messages.userId, users.id))
-      .where(eq(messages.spaceId, params.id))
-
-    // Add before cursor if provided for pagination
-    if (before) {
-      query = query.where(and(
-        eq(messages.spaceId, params.id),
-        lt(messages.createdAt, new Date(before))
-      ))
-    }
-
-    const spaceMessages = await query
+      .where(and(...whereConditions))
       .orderBy(desc(messages.createdAt))
       .limit(Math.min(limit, 100)) // Cap at 100 messages per request
 
@@ -93,10 +91,8 @@ export async function GET(
 }
 
 const createMessageSchema = insertMessageSchema.omit({
-  id: true,
   spaceId: true,
   userId: true,
-  createdAt: true,
 })
 
 export async function POST(
@@ -162,8 +158,16 @@ export async function POST(
 
     const messageResult = messageWithUser[0]
 
-    // TODO: Broadcast to space members via Supabase Realtime
-    // This will be implemented when we replace WebSocket with Supabase Realtime
+    // NOTE: Removed redundant server-side broadcast to prevent message duplication
+    // The postgres_changes subscription will automatically handle real-time updates
+    // when the message is inserted into the database
+
+    // REMOVED: Broadcast new message to all space members via server-side Supabase Realtime
+    // This was causing duplicate messages because clients subscribe to both:
+    // 1. postgres_changes (triggered by database INSERT)
+    // 2. broadcast events (triggered by this manual broadcast)
+    //
+    // The postgres_changes subscription is sufficient for real-time message delivery
 
     return NextResponse.json(messageResult, { status: 201 })
   } catch (error) {

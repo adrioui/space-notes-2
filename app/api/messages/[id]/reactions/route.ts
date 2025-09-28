@@ -51,10 +51,8 @@ export async function GET(
 }
 
 const createReactionSchema = insertMessageReactionSchema.omit({
-  id: true,
   messageId: true,
   userId: true,
-  createdAt: true,
 })
 
 export async function POST(
