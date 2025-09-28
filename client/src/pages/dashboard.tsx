@@ -26,11 +26,6 @@ export default function Dashboard() {
     }
   }, [isAuthenticated, isLoading, setLocation]);
 
-  useEffect(() => {
-    if (spaces.length > 0 && !selectedSpaceId) {
-      setSelectedSpaceId(spaces[0].id);
-    }
-  }, [spaces, selectedSpaceId]);
 
   if (isLoading) {
     return (

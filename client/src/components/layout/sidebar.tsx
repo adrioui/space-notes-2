@@ -9,7 +9,7 @@ import type { Space } from '@shared/schema';
 interface SidebarProps {
   spaces: Space[];
   selectedSpaceId: string | null;
-  onSelectSpace: (spaceId: string) => void;
+  onSelectSpace: (spaceId: string | null) => void;
 }
 
 export default function Sidebar({ spaces, selectedSpaceId, onSelectSpace }: SidebarProps) {
@@ -85,7 +85,7 @@ export default function Sidebar({ spaces, selectedSpaceId, onSelectSpace }: Side
                 className={`flex items-center space-x-3 p-2 rounded-lg hover:bg-muted cursor-pointer border-l-2 ${
                   selectedSpaceId === space.id ? 'border-primary bg-muted' : 'border-transparent'
                 }`}
-                onClick={() => onSelectSpace(space.id)}
+                onClick={() => onSelectSpace(selectedSpaceId === space.id ? null : space.id)}
                 data-testid={`space-${space.id}`}
               >
                 <div className="w-8 h-8 bg-secondary rounded-lg flex items-center justify-center">
