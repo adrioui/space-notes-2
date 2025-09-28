@@ -39,7 +39,7 @@ export const authOptionsSimple: NextAuthOptions = {
           if (isDemoAccount) {
             const isAdmin = credentials.contact.toLowerCase() === 'demo-admin@example.com'
             return {
-              id: isAdmin ? 'demo-admin-id' : 'demo-member-id',
+              id: isAdmin ? '550e8400-e29b-41d4-a716-446655440001' : '550e8400-e29b-41d4-a716-446655440002',
               email: credentials.contact,
               name: isAdmin ? 'Demo Admin' : 'Demo Member',
               image: null,

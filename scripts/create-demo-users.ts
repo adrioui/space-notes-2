@@ -7,6 +7,16 @@ import { db } from '../src/lib/db'
 import { users } from '../shared/schema'
 import { eq } from 'drizzle-orm'
 
+// Ensure we can run this script directly
+if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+  // Load environment variables for local development
+  try {
+    require('dotenv').config()
+  } catch (e) {
+    console.log('dotenv not available, using existing env vars')
+  }
+}
+
 const DEMO_USERS = [
   {
     id: '550e8400-e29b-41d4-a716-446655440001',
