@@ -25,6 +25,11 @@ const otpSchema = z.object({
 type ContactForm = z.infer<typeof contactSchema>
 type OTPForm = z.infer<typeof otpSchema>
 
+// Helper function to detect demo accounts
+const isDemoAccount = (email: string): boolean => {
+  return ['demo-admin@example.com', 'demo-member@example.com'].includes(email.toLowerCase())
+}
+
 export default function OTPFormClient() {
   const [step, setStep] = useState<'contact' | 'otp' | 'profile'>('contact')
   const [contact, setContact] = useState('')
@@ -51,27 +56,59 @@ export default function OTPFormClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contact: data.contact }),
       })
-      
+
       const result = await response.json()
-      
+
       if (!response.ok) {
         throw new Error(result.message || 'Failed to send OTP')
       }
 
       setContact(data.contact)
-      setStep('otp')
 
-      // Store debug OTP if provided (development mode only)
-      if (result.debugOTP) {
-        setDebugOTP(result.debugOTP)
+      // Check if this is a demo account that should auto-login
+      if (result.isDemoAccount && result.autoLogin) {
+        console.log('🎭 Demo account detected - auto-authenticating')
+
+        toast({
+          title: 'Demo Account Detected',
+          description: 'Automatically signing you in...',
+        })
+
+        // Auto-authenticate demo account using NextAuth
+        const authResult = await signIn('otp', {
+          contact: data.contact,
+          otp: '123456', // Demo accounts accept any OTP
+          redirect: false,
+        })
+
+        if (authResult?.error) {
+          throw new Error(authResult.error)
+        }
+
+        if (authResult?.ok) {
+          toast({
+            title: 'Welcome!',
+            description: 'Demo account signed in successfully.',
+          })
+          router.push('/dashboard')
+          return
+        }
+      } else {
+        // Regular account - proceed to OTP step
+        setStep('otp')
+
+        // Store debug OTP if provided (development mode only)
+        if (result.debugOTP) {
+          setDebugOTP(result.debugOTP)
+        }
+
+        toast({
+          title: 'OTP Sent',
+          description: result.debugOTP
+            ? `OTP sent! Development mode - your code is: ${result.debugOTP}`
+            : 'Please check your email or phone for the verification code.',
+        })
       }
-
-      toast({
-        title: 'OTP Sent',
-        description: result.debugOTP
-          ? `OTP sent! Development mode - your code is: ${result.debugOTP}`
-          : 'Please check your email or phone for the verification code.',
-      })
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -126,11 +163,20 @@ export default function OTPFormClient() {
           <div className="text-center">
             <h1 className="text-2xl font-bold">Welcome to Spaces</h1>
             <p className="text-muted-foreground mt-2">
-              {step === 'contact' 
+              {step === 'contact'
                 ? 'Enter your email or phone number to get started'
                 : 'Enter the verification code we sent you'
               }
             </p>
+            {step === 'contact' && (
+              <div className="mt-4 p-3 bg-gray-50 rounded-lg border text-sm">
+                <p className="font-medium text-gray-700 mb-2">Try Demo Accounts (Instant Login):</p>
+                <div className="space-y-1 text-gray-600">
+                  <div>👑 <code className="bg-white px-2 py-1 rounded">demo-admin@example.com</code> (Admin)</div>
+                  <div>👤 <code className="bg-white px-2 py-1 rounded">demo-member@example.com</code> (Member)</div>
+                </div>
+              </div>
+            )}
           </div>
 
           {step === 'contact' ? (
@@ -150,17 +196,26 @@ export default function OTPFormClient() {
                           data-testid="input-contact"
                         />
                       </FormControl>
+                      {/* Demo account indicator */}
+                      {field.value && isDemoAccount(field.value) && (
+                        <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded-md border border-blue-200">
+                          🎭 <strong>Demo Account Detected!</strong> This account will be automatically signed in without requiring an OTP code.
+                        </div>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <Button 
-                  type="submit" 
-                  className="w-full" 
+                <Button
+                  type="submit"
+                  className="w-full"
                   disabled={isLoading}
                   data-testid="button-send-otp"
                 >
-                  {isLoading ? 'Sending...' : 'Send Verification Code'}
+                  {isLoading
+                    ? (isDemoAccount(contactForm.watch('contact')) ? 'Signing In...' : 'Sending...')
+                    : (isDemoAccount(contactForm.watch('contact')) ? 'Sign In Instantly' : 'Send Verification Code')
+                  }
                 </Button>
               </form>
             </Form>

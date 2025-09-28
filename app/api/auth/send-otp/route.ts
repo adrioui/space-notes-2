@@ -21,11 +21,13 @@ export async function POST(request: NextRequest) {
     const isDemoAccount = ['demo-admin@example.com', 'demo-member@example.com'].includes(contact.toLowerCase())
 
     if (isDemoAccount) {
-      console.log('🎭 DEMO SEND OTP: Demo account detected')
+      console.log('🎭 DEMO SEND OTP: Demo account detected - enabling auto-login')
       return NextResponse.json({
         success: true,
-        message: "Demo account detected! Use any 6-digit code to sign in.",
-        debugOTP: "123456"
+        message: "Demo account detected! Automatically signing you in...",
+        debugOTP: "123456",
+        isDemoAccount: true,
+        autoLogin: true
       }, { status: 200 })
     }
 
