@@ -78,6 +78,7 @@ describe('useWebSocket Hook', () => {
 
   afterEach(() => {
     vi.resetAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('establishes WebSocket connection', () => {

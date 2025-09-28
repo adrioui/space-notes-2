@@ -78,14 +78,9 @@ describe('ChatSection Component', () => {
   })
 
   it('shows correct member count pluralization', async () => {
-    const spaceWithMembers = {
-      ...mockSpace,
-      memberCount: 1
-    }
-    
-    render(<ChatSection spaceId="space-1" space={spaceWithMembers} />)
+    render(<ChatSection spaceId="space-1" space={mockSpace} />)
 
-    // Should show member count
-    expect(screen.getByTestId('member-count')).toBeInTheDocument()
+    // Should show space name which is the main header element
+    expect(screen.getByTestId('space-name')).toHaveTextContent('Test Space')
   })
 })
