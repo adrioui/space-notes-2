@@ -11,42 +11,8 @@ import { NextRequest, NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-// Create NextAuth handler with error wrapping
-const nextAuthHandler = NextAuth(authOptionsBypass)
+// Create NextAuth handler - let it handle its own routes
+const handler = NextAuth(authOptionsBypass)
 
-// Wrap handlers with error catching for better debugging
-async function GET(request: NextRequest) {
-  try {
-    console.log('NextAuth GET request:', request.url)
-    return await nextAuthHandler(request)
-  } catch (error) {
-    console.error('NextAuth GET error:', error)
-    return NextResponse.json(
-      {
-        error: 'NextAuth configuration error',
-        message: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
-      },
-      { status: 500 }
-    )
-  }
-}
-
-async function POST(request: NextRequest) {
-  try {
-    console.log('NextAuth POST request:', request.url)
-    return await nextAuthHandler(request)
-  } catch (error) {
-    console.error('NextAuth POST error:', error)
-    return NextResponse.json(
-      {
-        error: 'NextAuth configuration error',
-        message: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
-      },
-      { status: 500 }
-    )
-  }
-}
-
-export { GET, POST }
+// Export the handler directly for NextAuth to manage its internal routes
+export { handler as GET, handler as POST }

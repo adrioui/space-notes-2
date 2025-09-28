@@ -8,6 +8,11 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata = {
   title: 'Spaces - Collaborate, Chat & Learn',
   description: 'Real-time collaboration platform with messaging, notes, and lessons',
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 }
 
 export default function RootLayout({
