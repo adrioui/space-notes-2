@@ -26,10 +26,10 @@ Preferred communication style: Simple, everyday language.
 ## Database Layer
 - **ORM**: Drizzle ORM with PostgreSQL dialect  
 - **Schema Management**: Shared schema definitions between client and server
-- **Database Provider**: Neon Database (serverless PostgreSQL) via DATABASE_URL
+- **Database Provider**: Supabase (PostgreSQL with real-time features) via SUPABASE_DATABASE_URL
 - **Storage Implementation**: DrizzleStorage class providing full database persistence for all data operations
 - **Migration Strategy**: Drizzle Kit for schema migrations and database pushes
-- **Connection**: Uses Neon HTTP driver with fallback from DATABASE_URL to SUPABASE_DATABASE_URL
+- **Connection**: Uses postgres-js driver with Supabase pooler connection for optimal real-time performance
 
 ## Authentication System
 - **Method**: OTP-only authentication (email or phone)
@@ -46,7 +46,7 @@ Preferred communication style: Simple, everyday language.
 
 ## External Dependencies
 
-- **Database**: Neon Database (PostgreSQL-compatible serverless database)
+- **Database**: Supabase (PostgreSQL with real-time capabilities and integrated storage)
 - **UI Framework**: Radix UI for accessible component primitives
 - **Styling**: Tailwind CSS for utility-first styling
 - **Real-time**: Native WebSocket implementation for live features
